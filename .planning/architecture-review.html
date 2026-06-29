@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Architecture Review — pi-clinepass-provider</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ startOnLoad: true, theme: "dark" });
+    </script>
+    <style>
+      body {
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .card {
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      }
+      .badge-strong {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+      }
+      .badge-worth {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+      }
+      .badge-spec {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+      }
+      .diagram-box {
+        background: #1e293b;
+        border-radius: 12px;
+        padding: 24px;
+      }
+      .before-after {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .before,
+      .after {
+        border-radius: 10px;
+        padding: 20px;
+        min-height: 220px;
+      }
+      .before {
+        background: #2d1b1b;
+        border: 1px solid #7f1d1d;
+      }
+      .after {
+        background: #1b2d1f;
+        border: 1px solid #166534;
+      }
+      .code-tag {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85em;
+        background: #334155;
+        padding: 2px 8px;
+        border-radius: 6px;
+        color: #e2e8f0;
+      }
+      .section-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #334155, transparent);
+        margin: 48px 0;
+      }
+      .vocab {
+        background: #1e1b4b;
+        border: 1px solid #3730a3;
+        border-radius: 10px;
+        padding: 16px;
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-slate-200 min-h-screen">
+    <div class="max-w-5xl mx-auto px-6 py-12">
+      <div class="mb-8">
+        <h1
+          class="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"
+        >
+          Architecture Review
+        </h1>
+        <p class="text-xl text-slate-400 mt-2">pi-clinepass-provider — Deepening Opportunities</p>
+        <p class="text-sm text-slate-500 mt-1">June 30, 2026</p>
+      </div>
+
+      <!-- ADRs respected -->
+      <div class="bg-slate-900 rounded-xl p-6 mb-8 border border-slate-800">
+        <h2 class="text-lg font-semibold text-slate-300 mb-3">📋 ADRs Consulted</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-400 mt-0.5">✓</span>
+            <div>
+              <span class="code-tag">ADR-0001</span> Use built-in openai-completions streaming —
+              <span class="text-slate-500">respected, no custom streaming proposed</span>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-400 mt-0.5">✓</span>
+            <div>
+              <span class="code-tag">ADR-0002</span> Pure logic/IoC separation —
+              <span class="text-slate-500">respected, all candidates preserve DI pattern</span>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-400 mt-0.5">✓</span>
+            <div>
+              <span class="code-tag">ADR-0003</span> Dual auth flow —
+              <span class="text-slate-500">respected, candidates refine internals</span>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-400 mt-0.5">✓</span>
+            <div>
+              <span class="code-tag">ADR-0004</span> Dynamic model discovery —
+              <span class="text-slate-500">respected, candidate deepens the module</span>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-emerald-400 mt-0.5">✓</span>
+            <div>
+              <span class="code-tag">ADR-0005</span> WorkOS token refresh —
+              <span class="text-slate-500">respected, candidate splits the seam</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vocabulary primer -->
+      <div class="vocab mb-8">
+        <p class="text-indigo-300 font-semibold mb-2">Architecture Vocabulary</p>
+        <p class="text-slate-400">
+          <b>Module</b> — a unit with an interface and implementation · <b>Depth</b> — interface
+          simplicity vs implementation complexity · <b>Seam</b> — a place where modules meet ·
+          <b>Locality</b> — related code living together · <b>Leverage</b> — a small interface
+          change propagating widely · <b>Adapter</b> — a module that translates between two
+          interfaces
+        </p>
+      </div>
+
+      <!-- ─── Candidate 1 ──────────────────────────────────────────────────── -->
+      <div class="section-divider"></div>
+      <div class="card bg-slate-900 rounded-2xl p-8 border border-slate-800 mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold text-slate-100">
+            1. Deepen <span class="code-tag">src/logic.ts</span> — Split the God Module
+          </h2>
+          <span class="badge-strong text-white text-xs font-bold px-3 py-1 rounded-full"
+            >Strong</span
+          >
+        </div>
+        <div class="mb-4">
+          <p class="text-sm text-slate-400 mb-2">
+            <b>Files:</b> <span class="code-tag">src/logic.ts</span> (630 lines, 30+ exports, 7
+            sections) · <span class="code-tag">tests/unit/logic.test.ts</span> (450 lines)
+          </p>
+        </div>
+        <div class="space-y-4 text-slate-300">
+          <div>
+            <p class="text-rose-400 font-semibold mb-1">Problem</p>
+            <p class="text-sm leading-relaxed">
+              <span class="code-tag">logic.ts</span> is a shallow module masquerading as a deep one.
+              Its interface is enormous — 30+ exports spanning model definitions, API key
+              resolution, WorkOS credential parsing, dynamic model discovery, error classification,
+              and environment helpers. Understanding any single concept requires scrolling past
+              unrelated sections. The <b>locality</b> is poor: the
+              <span class="code-tag">classifyClinePassError</span> function and its message
+              constants live far from the <span class="code-tag">message_end</span> handler in
+              <span class="code-tag">index.ts</span> that calls them. The
+              <b>deletion test</b> passes with force: deleting
+              <span class="code-tag">logic.ts</span> would concentrate all complexity into one
+              place, but that place is too big to navigate.
+            </p>
+          </div>
+          <div>
+            <p class="text-emerald-400 font-semibold mb-1">Solution</p>
+            <p class="text-sm leading-relaxed">
+              Split <span class="code-tag">logic.ts</span> into 4 deep modules along its existing
+              section seams:
+            </p>
+            <ul class="text-sm ml-6 mt-2 space-y-1 text-slate-400">
+              <li>
+                <span class="code-tag">src/models.ts</span> — Model definitions + dynamic discovery
+                (<span class="code-tag">MODELS</span>,
+                <span class="code-tag">fetchRemoteModels</span>,
+                <span class="code-tag">resolveModels</span>,
+                <span class="code-tag">ModelConfig</span>)
+              </li>
+              <li>
+                <span class="code-tag">src/auth.ts</span> — Credential resolution (<span
+                  class="code-tag"
+                  >resolveApiKey</span
+                >, <span class="code-tag">resolveClineAuthCredentials</span>,
+                <span class="code-tag">isWorkosToken</span>, auth path helpers)
+              </li>
+              <li>
+                <span class="code-tag">src/errors.ts</span> — Error classification (<span
+                  class="code-tag"
+                  >classifyClinePassError</span
+                >, <span class="code-tag">CLINEPASS_ERROR_MESSAGES</span>,
+                <span class="code-tag">ClinePassErrorType</span>)
+              </li>
+              <li>
+                <span class="code-tag">src/env.ts</span> — Environment helpers (<span
+                  class="code-tag"
+                  >resolveApiBase</span
+                >, <span class="code-tag">sanitizeApiKey</span>,
+                <span class="code-tag">buildEndpointUrl</span>, shared type guards)
+              </li>
+            </ul>
+            <p class="text-sm mt-2">
+              <span class="code-tag">logic.ts</span> becomes a barrel re-export for backward compat,
+              or is removed if callers import directly.
+            </p>
+          </div>
+          <div>
+            <p class="text-sky-400 font-semibold mb-1">Benefits</p>
+            <p class="text-sm leading-relaxed">
+              <b>Locality:</b> error classification lives next to the error handler that calls it.
+              Model definitions live next to the discovery logic that fetches them.
+              <b>Test surface:</b> each module has a focused test file instead of one 450-line
+              monster. <b>Leverage:</b> adding a new error type or auth source touches one module,
+              not a 630-line file. <b>AI-navigability:</b> agents can load a single small file to
+              understand a concept.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6">
+          <div class="before-after">
+            <div class="before">
+              <p class="text-rose-300 text-sm font-semibold mb-3 text-center">
+                Before — God Module
+              </p>
+              <div class="flex flex-col items-center gap-2">
+                <div
+                  class="bg-rose-950 border border-rose-800 rounded-lg px-4 py-3 text-center w-full"
+                >
+                  <p class="text-rose-200 font-mono text-sm">logic.ts</p>
+                  <p class="text-rose-500 text-xs mt-1">630 lines · 30+ exports</p>
+                </div>
+                <div class="text-xs text-slate-500 text-center leading-relaxed">
+                  models + auth + errors + env<br />+ WorkOS + discovery + helpers<br /><br />7
+                  sections, no clear seam
+                </div>
+                <div class="text-rose-600 text-2xl">↓</div>
+                <div class="flex gap-2">
+                  <div class="bg-slate-800 rounded px-3 py-2 text-xs text-slate-400">index.ts</div>
+                  <div class="bg-slate-800 rounded px-3 py-2 text-xs text-slate-400">oauth.ts</div>
+                </div>
+                <div class="bg-slate-800 rounded px-3 py-2 text-xs text-slate-400">
+                  logic.test.ts (450 lines)
+                </div>
+              </div>
+            </div>
+            <div class="after">
+              <p class="text-emerald-300 text-sm font-semibold mb-3 text-center">
+                After — Deep Modules
+              </p>
+              <div class="flex flex-col items-center gap-2">
+                <div class="flex flex-wrap justify-center gap-2">
+                  <div
+                    class="bg-emerald-950 border border-emerald-800 rounded-lg px-3 py-2 text-center"
+                  >
+                    <p class="text-emerald-200 font-mono text-xs">models.ts</p>
+                    <p class="text-emerald-600 text-xs">~150 lines</p>
+                  </div>
+                  <div
+                    class="bg-emerald-950 border border-emerald-800 rounded-lg px-3 py-2 text-center"
+                  >
+                    <p class="text-emerald-200 font-mono text-xs">auth.ts</p>
+                    <p class="text-emerald-600 text-xs">~180 lines</p>
+                  </div>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2">
+                  <div
+                    class="bg-emerald-950 border border-emerald-800 rounded-lg px-3 py-2 text-center"
+                  >
+                    <p class="text-emerald-200 font-mono text-xs">errors.ts</p>
+                    <p class="text-emerald-600 text-xs">~60 lines</p>
+                  </div>
+                  <div
+                    class="bg-emerald-950 border border-emerald-800 rounded-lg px-3 py-2 text-center"
+                  >
+                    <p class="text-emerald-200 font-mono text-xs">env.ts</p>
+                    <p class="text-emerald-600 text-xs">~50 lines</p>
+                  </div>
+                </div>
+                <div class="text-emerald-600 text-2xl">↓</div>
+                <div class="flex gap-2">
+                  <div class="bg-slate-800 rounded px-3 py-2 text-xs text-slate-400">index.ts</div>
+                  <div class="bg-slate-800 rounded px-3 py-2 text-xs text-slate-400">oauth.ts</div>
+                </div>
+                <div class="flex gap-1">
+                  <div class="bg-slate-800 rounded px-2 py-1 text-xs text-slate-500">
+                    models.test
+                  </div>
+                  <div class="bg-slate-800 rounded px-2 py-1 text-xs text-slate-500">auth.test</div>
+                  <div class="bg-slate-800 rounded px-2 py-1 text-xs text-slate-500">
+                    errors.test
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Candidate 2 ──────────────────────────────────────────────────── -->
+      <div class="section-divider"></div>
+      <div class="card bg-slate-900 rounded-2xl p-8 border border-slate-800 mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold text-slate-100">
+            2. Deepen the Error Surface — Extract a
+            <span class="code-tag">ClinePassErrorHandler</span>
+          </h2>
+          <span class="badge-worth text-white text-xs font-bold px-3 py-1 rounded-full"
+            >Worth exploring</span
+          >
+        </div>
+        <div class="mb-4">
+          <p class="text-sm text-slate-400 mb-2">
+            <b>Files:</b> <span class="code-tag">src/index.ts</span> (error handler block, ~25
+            lines) · <span class="code-tag">src/logic.ts</span> (<span class="code-tag"
+              >classifyClinePassError</span
+            >, ~50 lines)
+          </p>
+        </div>
+        <div class="space-y-4 text-slate-300">
+          <div>
+            <p class="text-rose-400 font-semibold mb-1">Problem</p>
+            <p class="text-sm leading-relaxed">
+              The error handling <b>seam</b> is split across two modules with no owning interface.
+              <span class="code-tag">classifyClinePassError</span> in
+              <span class="code-tag">logic.ts</span> maps error strings to types + messages. The
+              <span class="code-tag">message_end</span> handler in
+              <span class="code-tag">index.ts</span> does the provider filtering (<span
+                class="code-tag"
+                >msg.provider ?? ctx.model?.provider</span
+              >), the UI/non-UI dispatch (<span class="code-tag">ctx.ui.notify</span> vs
+              <span class="code-tag">console.error</span>), and the classification call. The logic
+              is shallow in both places — the interface of each piece is nearly as complex as its
+              implementation. There's no <b>locality</b>: if you need to understand "what happens
+              when ClinePass returns 403", you read two files. The <b>deletion test</b> barely
+              passes: deleting the handler block from <span class="code-tag">index.ts</span> would
+              move complexity, not concentrate it — the real question is where it should live.
+            </p>
+          </div>
+          <div>
+            <p class="text-emerald-400 font-semibold mb-1">Solution</p>
+            <p class="text-sm leading-relaxed">
+              Create a deep <span class="code-tag">ClinePassErrorHandler</span> module that owns the
+              full error surface: classification, provider filtering, and message delivery. The
+              interface is a single function:
+            </p>
+            <pre
+              class="bg-slate-950 rounded-lg p-3 mt-2 text-xs text-slate-300"
+            ><code>// src/errors.ts
+export function handleClinePassError(
+  message: AgentMessage,
+  ctx: ExtensionContext,
+): void  // returns true if handled, false if not ours</code></pre>
+            <p class="text-sm mt-2">
+              <span class="code-tag">index.ts</span> shrinks to:
+              <span class="code-tag"
+                >pi.on("message_end", (e, ctx) => handleClinePassError(e.message, ctx))</span
+              >
+            </p>
+          </div>
+          <div>
+            <p class="text-sky-400 font-semibold mb-1">Benefits</p>
+            <p class="text-sm leading-relaxed">
+              <b>Locality:</b> classification + filtering + delivery live together.
+              <b>Test surface:</b> the interface <i>is</i> the test — pass a fake message + context,
+              assert the notify call. No need to test the classification and the handler separately.
+              <b>Leverage:</b> adding 403-specific re-login prompts or 429 backoff hints touches one
+              module.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6">
+          <div class="before-after">
+            <div class="before">
+              <p class="text-rose-300 text-sm font-semibold mb-3 text-center">
+                Before — Split Seam
+              </p>
+              <div class="flex flex-col items-center gap-3">
+                <div class="bg-slate-800 rounded-lg px-4 py-3 text-center w-full">
+                  <p class="text-slate-300 font-mono text-sm">index.ts</p>
+                  <p class="text-slate-500 text-xs mt-1">
+                    provider filter + UI dispatch<br />+ classify call (~25 lines)
+                  </p>
+                </div>
+                <div class="text-slate-600 text-xl">↕</div>
+                <div class="bg-slate-800 rounded-lg px-4 py-3 text-center w-full">
+                  <p class="text-slate-300 font-mono text-sm">logic.ts</p>
+                  <p class="text-slate-500 text-xs mt-1">
+                    classifyClinePassError<br />+ CLINEPASS_ERROR_MESSAGES
+                  </p>
+                </div>
+                <p class="text-rose-500 text-xs">
+                  No owning module · 2 files to understand one concept
+                </p>
+              </div>
+            </div>
+            <div class="after">
+              <p class="text-emerald-300 text-sm font-semibold mb-3 text-center">
+                After — Deep Error Module
+              </p>
+              <div class="flex flex-col items-center gap-3">
+                <div
+                  class="bg-emerald-950 border border-emerald-800 rounded-lg px-4 py-3 text-center w-full"
+                >
+                  <p class="text-emerald-200 font-mono text-sm">errors.ts</p>
+                  <p class="text-emerald-600 text-xs mt-1">
+                    classify + filter + deliver<br />(~80 lines, deep)
+                  </p>
+                </div>
+                <div class="text-emerald-600 text-xl">↓</div>
+                <div class="bg-slate-800 rounded-lg px-4 py-2 text-center w-full">
+                  <p class="text-slate-300 font-mono text-sm">index.ts</p>
+                  <p class="text-slate-500 text-xs">
+                    pi.on("message_end", (e,ctx) =&gt;<br />handleClinePassError(e.message, ctx))
+                  </p>
+                </div>
+                <p class="text-emerald-500 text-xs">One interface · one test · one concept</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Candidate 3 ──────────────────────────────────────────────────── -->
+      <div class="section-divider"></div>
+      <div class="card bg-slate-900 rounded-2xl p-8 border border-slate-800 mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold text-slate-100">
+            3. Deepen <span class="code-tag">src/oauth.ts</span> — Extract a WorkOS Protocol Adapter
+          </h2>
+          <span class="badge-worth text-white text-xs font-bold px-3 py-1 rounded-full"
+            >Worth exploring</span
+          >
+        </div>
+        <div class="mb-4">
+          <p class="text-sm text-slate-400 mb-2">
+            <b>Files:</b> <span class="code-tag">src/oauth.ts</span> (200 lines) ·
+            <span class="code-tag">src/logic.ts</span> (WorkOS constants +
+            <span class="code-tag">resolveClineAuthCredentials</span>)
+          </p>
+        </div>
+        <div class="space-y-4 text-slate-300">
+          <div>
+            <p class="text-rose-400 font-semibold mb-1">Problem</p>
+            <p class="text-sm leading-relaxed">
+              <span class="code-tag">oauth.ts</span> mixes two concerns at the same <b>depth</b>:
+              (1) the WorkOS HTTP protocol — the non-standard
+              <span class="code-tag">granttype</span> field, the
+              <span class="code-tag">workos:</span> prefix enforcement, the
+              <span class="code-tag">{data: {...}}</span> vs flat response parsing; and (2) the pi
+              login orchestration — detecting Cline CLI creds, deciding refresh vs paste, wiring
+              callbacks. The WorkOS protocol details are an <b>adapter</b> that should sit behind a
+              seam, but they're inlined in <span class="code-tag">refreshWorkosToken()</span>.
+              Meanwhile, the WorkOS constants (<span class="code-tag">WORKOS_TOKEN_PREFIX</span>,
+              <span class="code-tag">WORKOS_TOKEN_LIFETIME_MS</span>, etc.) live in
+              <span class="code-tag">logic.ts</span>, breaking <b>locality</b>. The
+              <b>deletion test</b> passes: deleting
+              <span class="code-tag">refreshWorkosToken</span> would force the protocol details into
+              a named adapter, concentrating them where they belong.
+            </p>
+          </div>
+          <div>
+            <p class="text-emerald-400 font-semibold mb-1">Solution</p>
+            <p class="text-sm leading-relaxed">
+              Extract a <span class="code-tag">src/workos.ts</span> adapter that owns the entire
+              WorkOS protocol surface:
+            </p>
+            <ul class="text-sm ml-6 mt-2 space-y-1 text-slate-400">
+              <li>WorkOS constants (prefix, lifetime, refresh margin, refresh endpoint)</li>
+              <li>
+                <span class="code-tag">refreshWorkosToken()</span> — the HTTP call with non-standard
+                format handling
+              </li>
+              <li><span class="code-tag">isWorkosToken()</span> — prefix detection</li>
+              <li>
+                <span class="code-tag">resolveClineAuthCredentials()</span> — WorkOS credential
+                extraction from Cline CLI config
+              </li>
+            </ul>
+            <p class="text-sm mt-2">
+              <span class="code-tag">oauth.ts</span> becomes a pure orchestration layer: "try
+              WorkOS, else paste" — with no protocol knowledge.
+            </p>
+          </div>
+          <div>
+            <p class="text-sky-400 font-semibold mb-1">Benefits</p>
+            <p class="text-sm leading-relaxed">
+              <b>Locality:</b> all WorkOS protocol knowledge in one place. <b>Adapter depth:</b> the
+              adapter's interface is <span class="code-tag">refresh(token) → token</span> — simple,
+              hiding the non-standard API format. <b>Test surface:</b> WorkOS tests target the
+              adapter directly; OAuth tests test orchestration with a mocked adapter.
+              <b>Leverage:</b> if Cline changes the refresh format (e.g., normalizes
+              <span class="code-tag">granttype</span> → <span class="code-tag">grant_type</span>),
+              one file changes.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6">
+          <div class="before-after">
+            <div class="before">
+              <p class="text-rose-300 text-sm font-semibold mb-3 text-center">
+                Before — Protocol + Orchestration Tangled
+              </p>
+              <div class="flex flex-col items-center gap-2">
+                <div class="flex gap-2 w-full">
+                  <div
+                    class="bg-rose-950 border border-rose-800 rounded-lg px-3 py-3 text-center flex-1"
+                  >
+                    <p class="text-rose-200 font-mono text-xs">oauth.ts</p>
+                    <p class="text-rose-500 text-xs mt-1">
+                      login() + refreshToken()<br />+ refreshWorkosToken()<br />(HTTP + format +
+                      prefix)
+                    </p>
+                  </div>
+                  <div
+                    class="bg-rose-950 border border-rose-800 rounded-lg px-3 py-3 text-center flex-1"
+                  >
+                    <p class="text-rose-200 font-mono text-xs">logic.ts</p>
+                    <p class="text-rose-500 text-xs mt-1">
+                      WorkOS constants<br />+ resolveClineAuthCredentials
+                    </p>
+                  </div>
+                </div>
+                <p class="text-rose-500 text-xs">
+                  Protocol spread across 2 files · Orchestration + HTTP mixed
+                </p>
+              </div>
+            </div>
+            <div class="after">
+              <p class="text-emerald-300 text-sm font-semibold mb-3 text-center">
+                After — Adapter Behind a Seam
+              </p>
+              <div class="flex flex-col items-center gap-2">
+                <div
+                  class="bg-emerald-950 border border-emerald-800 rounded-lg px-4 py-3 text-center w-full"
+                >
+                  <p class="text-emerald-200 font-mono text-sm">workos.ts (adapter)</p>
+                  <p class="text-emerald-600 text-xs mt-1">
+                    refresh() + isWorkosToken()<br />+ resolveClineAuthCredentials()<br />+ all
+                    WorkOS constants
+                  </p>
+                </div>
+                <div class="text-emerald-600 text-xl">↓ simple interface</div>
+                <div class="bg-slate-800 rounded-lg px-4 py-3 text-center w-full">
+                  <p class="text-slate-300 font-mono text-sm">oauth.ts (orchestration)</p>
+                  <p class="text-slate-500 text-xs">
+                    login() → try WorkOS, else paste<br />refreshToken() → delegate or no-op
+                  </p>
+                </div>
+                <p class="text-emerald-500 text-xs">Protocol isolated · Orchestration is thin</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Candidate 4 ──────────────────────────────────────────────────── -->
+      <div class="section-divider"></div>
+      <div class="card bg-slate-900 rounded-2xl p-8 border border-slate-800 mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold text-slate-100">
+            4. Deepen Test <b>Locality</b> — Align Test Files with Source Modules
+          </h2>
+          <span class="badge-spec text-white text-xs font-bold px-3 py-1 rounded-full"
+            >Speculative</span
+          >
+        </div>
+        <div class="mb-4">
+          <p class="text-sm text-slate-400 mb-2">
+            <b>Files:</b> <span class="code-tag">tests/unit/logic.test.ts</span> (450 lines, 50+
+            tests) · <span class="code-tag">tests/unit/index.test.ts</span> (340 lines, 12 tests)
+          </p>
+        </div>
+        <div class="space-y-4 text-slate-300">
+          <div>
+            <p class="text-rose-400 font-semibold mb-1">Problem</p>
+            <p class="text-sm leading-relaxed">
+              <span class="code-tag">logic.test.ts</span> tests 7 distinct concept areas (models,
+              auth, WorkOS, discovery, errors, sanitization, constants) in one file. When a model
+              test fails, you scroll past 200 lines of auth tests to find it. The test
+              <b>locality</b> is the inverse of good source locality — everything is in one place,
+              which means nothing is in the right place.
+              <span class="code-tag">index.test.ts</span> mixes provider registration tests with
+              error handler tests. This is a symptom of Candidate 1 (God Module) — the test file
+              mirrors the source file's lack of seams.
+            </p>
+          </div>
+          <div>
+            <p class="text-emerald-400 font-semibold mb-1">Solution</p>
+            <p class="text-sm leading-relaxed">
+              Split test files to mirror the source module split from Candidate 1:
+            </p>
+            <ul class="text-sm ml-6 mt-2 space-y-1 text-slate-400">
+              <li>
+                <span class="code-tag">tests/unit/models.test.ts</span> — MODELS, modelIds,
+                fetchRemoteModels, resolveModels
+              </li>
+              <li>
+                <span class="code-tag">tests/unit/auth.test.ts</span> — resolveApiKey,
+                resolveClineAuthCredentials, isWorkosToken
+              </li>
+              <li>
+                <span class="code-tag">tests/unit/errors.test.ts</span> — classifyClinePassError,
+                CLINEPASS_ERROR_MESSAGES
+              </li>
+              <li>
+                <span class="code-tag">tests/unit/env.test.ts</span> — resolveApiBase,
+                sanitizeApiKey, buildEndpointUrl
+              </li>
+              <li>
+                <span class="code-tag">tests/unit/registration.test.ts</span> — provider
+                registration shape, oauth wiring
+              </li>
+              <li>
+                <span class="code-tag">tests/unit/error-handler.test.ts</span> — message_end handler
+                tests
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p class="text-sky-400 font-semibold mb-1">Benefits</p>
+            <p class="text-sm leading-relaxed">
+              <b>Locality:</b> when <span class="code-tag">classifyClinePassError</span> breaks, you
+              open <span class="code-tag">errors.test.ts</span> — not a 450-line file.
+              <b>Test surface as interface:</b> each test file <i>is</i> the interface contract for
+              its module. <b>Parallel dev:</b> two developers can work on auth tests and model tests
+              without merge conflicts. <b>Depends on Candidate 1:</b> this is only valuable if the
+              source modules are split first.
+            </p>
+          </div>
+        </div>
+        <div class="mt-6">
+          <div class="before-after">
+            <div class="before">
+              <p class="text-rose-300 text-sm font-semibold mb-3 text-center">
+                Before — Monolithic Test File
+              </p>
+              <div class="flex flex-col items-center gap-2">
+                <div
+                  class="bg-rose-950 border border-rose-800 rounded-lg px-4 py-3 text-center w-full"
+                >
+                  <p class="text-rose-200 font-mono text-sm">logic.test.ts</p>
+                  <p class="text-rose-500 text-xs mt-1">
+                    450 lines · 50+ tests<br />7 describe blocks
+                  </p>
+                </div>
+                <div
+                  class="bg-rose-950 border border-rose-800 rounded-lg px-4 py-3 text-center w-full"
+                >
+                  <p class="text-rose-200 font-mono text-sm">index.test.ts</p>
+                  <p class="text-rose-500 text-xs mt-1">
+                    340 lines · 12 tests<br />2 describe blocks
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="after">
+              <p class="text-emerald-300 text-sm font-semibold mb-3 text-center">
+                After — Cohesive Test Modules
+              </p>
+              <div class="grid grid-cols-3 gap-2 w-full">
+                <div class="bg-emerald-950 border border-emerald-800 rounded px-2 py-2 text-center">
+                  <p class="text-emerald-200 font-mono text-xs">models.test</p>
+                </div>
+                <div class="bg-emerald-950 border border-emerald-800 rounded px-2 py-2 text-center">
+                  <p class="text-emerald-200 font-mono text-xs">auth.test</p>
+                </div>
+                <div class="bg-emerald-950 border border-emerald-800 rounded px-2 py-2 text-center">
+                  <p class="text-emerald-200 font-mono text-xs">errors.test</p>
+                </div>
+                <div class="bg-emerald-950 border border-emerald-800 rounded px-2 py-2 text-center">
+                  <p class="text-emerald-200 font-mono text-xs">env.test</p>
+                </div>
+                <div class="bg-emerald-950 border border-emerald-800 rounded px-2 py-2 text-center">
+                  <p class="text-emerald-200 font-mono text-xs">registration.test</p>
+                </div>
+                <div class="bg-emerald-950 border border-emerald-800 rounded px-2 py-2 text-center">
+                  <p class="text-emerald-200 font-mono text-xs">error-handler.test</p>
+                </div>
+              </div>
+              <p class="text-emerald-500 text-xs text-center mt-3">
+                Each test file = one module's contract
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Top Recommendation ────────────────────────────────────────────── -->
+      <div class="section-divider"></div>
+      <div
+        class="bg-gradient-to-br from-indigo-950 to-purple-950 rounded-2xl p-8 border border-indigo-800"
+      >
+        <h2 class="text-2xl font-bold text-indigo-200 mb-3">🏆 Top Recommendation</h2>
+        <p class="text-slate-300 leading-relaxed">
+          Start with <b>Candidate 1 — Split <span class="code-tag">logic.ts</span></b
+          >. It's the root cause: the God module forces poor locality in both source and tests,
+          makes the error surface split (Candidate 2), and scatters WorkOS constants (Candidate 3).
+          Splitting it unblocks all other candidates naturally — the error handler, the WorkOS
+          adapter, and the test files all fall out of the module boundaries you draw.
+        </p>
+        <p class="text-slate-400 text-sm mt-4">
+          The split is low-risk: <span class="code-tag">logic.ts</span> can remain as a barrel
+          re-export for backward compatibility, so <span class="code-tag">index.ts</span> and
+          <span class="code-tag">oauth.ts</span> imports don't change. The ADRs (especially ADR-0002
+          on pure logic/IoC) are fully respected — the DI pattern moves with each function into its
+          new module.
+        </p>
+      </div>
+
+      <div class="mt-12 text-center text-slate-600 text-sm">
+        <p>pi-clinepass-provider · Architecture Review · June 2026</p>
+        <p class="mt-1">Generated by the improve-codebase-architecture skill</p>
+      </div>
+    </div>
+  </body>
+</html>
