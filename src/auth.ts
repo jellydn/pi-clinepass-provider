@@ -115,16 +115,10 @@ export function walkClineProviderSettings<T>(
  * resolveClineAuthCredentials() + the OAuth refresh flow in oauth.ts.
  */
 function resolveClineProvidersKey(parsed: Record<string, unknown>): string | undefined {
-  return walkClineProviderSettings(parsed, (settings) => {
-    // Static API key: settings.apiKey (long-lived, safe to use directly)
-    const apiKey = stringValue(settings.apiKey);
-    if (apiKey) return apiKey;
-
-    // Note: we intentionally do NOT return settings.auth.accessToken here.
-    // That is a short-lived WorkOS OAuth token that expires after ~1 hour and
-    // cannot be used as a static API key.
-    return undefined;
-  });
+  // Static API key: settings.apiKey (long-lived, safe to use directly).
+  // We intentionally do NOT check settings.auth.accessToken here — that is a
+  // short-lived WorkOS OAuth token handled by resolveClineAuthCredentials().
+  return walkClineProviderSettings(parsed, (settings) => stringValue(settings.apiKey));
 }
 
 /**
