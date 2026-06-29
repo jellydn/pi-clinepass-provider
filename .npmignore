@@ -1,0 +1,29 @@
+# Source maps
+*.map
+*.d.ts.map
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+*.tsbuildinfo.*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Editor
+.DS_Store
+*.swp
+*.swo
+
+# Test fixtures and snapshots
+tests/**/__snapshots__/
+tests/**/fixtures/
+
+# Documentation internals
+.planning/
+doc/
