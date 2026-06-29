@@ -35,7 +35,12 @@ export function sanitizeApiKey(input: string): string {
     .replaceAll(`${esc}[201~`, "")
     .replaceAll("[200~", "")
     .replaceAll("[201~", "")
-    .replace(/[\x00-\x1f\x7f]/g, "")
+    .split("")
+    .filter((c) => {
+      const code = c.charCodeAt(0);
+      return code > 31 && code !== 127;
+    })
+    .join("")
     .trim();
 }
 
