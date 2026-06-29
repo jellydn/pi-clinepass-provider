@@ -1,7 +1,7 @@
-# ADR-0001: WorkOS Token Prefix Location
+# 7: WorkOS Token Prefix Location
 
 **Date:** 2026-06-30  
-**Status:** Superseded (Option A accepted)
+**Status:** Accepted
 
 ## Context
 
