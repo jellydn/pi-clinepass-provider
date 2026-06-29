@@ -571,7 +571,12 @@ export function classifyClinePassError(errorMessage: string): {
   const lower = errorMessage.toLowerCase();
 
   // 403 — not subscribed or org-level restriction (per Cline PR #11355)
-  if (lower.includes("403") || lower.includes("forbidden")) {
+  if (
+    lower.includes("403") ||
+    lower.includes("forbidden") ||
+    lower.includes("subscription required") ||
+    lower.includes("not subscribed")
+  ) {
     return { type: "not_subscribed", message: CLINEPASS_ERROR_MESSAGES.not_subscribed };
   }
 
