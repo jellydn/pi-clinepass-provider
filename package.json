@@ -64,8 +64,8 @@
     "vitest": "^4.1.5"
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": ">=0.80 <0.90",
-    "@earendil-works/pi-coding-agent": ">=0.80 <0.90"
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
   },
   "engines": {
     "node": ">=22"
