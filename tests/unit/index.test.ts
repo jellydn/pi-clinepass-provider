@@ -243,6 +243,33 @@ describe("message_end error handler", () => {
     expect(notifyCalls[0].msg).toBe(CLINEPASS_ERROR_MESSAGES.not_subscribed);
   });
 
+  it("surfaces friendly message for unknown error types", async () => {
+    const ref: { h?: MessageEndHandler } = {};
+    const notifyCalls: { msg: string; type: string }[] = [];
+
+    const mod = await import("../../src/index.js");
+    await mod.default(makeFakePi(ref) as never);
+
+    ref.h!(
+      {
+        message: {
+          stopReason: "error",
+          errorMessage: "Internal server error",
+          provider: PROVIDER_NAME,
+        },
+      },
+      {
+        hasUI: true,
+        ui: { notify: (msg: string, type: string) => notifyCalls.push({ msg, type }) },
+        model: { provider: PROVIDER_NAME },
+      },
+    );
+
+    expect(notifyCalls).toHaveLength(1);
+    expect(notifyCalls[0].msg).toBe(CLINEPASS_ERROR_MESSAGES.unknown);
+    expect(notifyCalls[0].type).toBe("error");
+  });
+
   it("ignores errors from other providers", async () => {
     const ref: { h?: MessageEndHandler } = {};
     const notifyCalls: { msg: string; type: string }[] = [];
