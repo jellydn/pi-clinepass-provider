@@ -34,13 +34,13 @@
 
 ## Configuration Files
 
-| File                       | Purpose                                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `package.json`             | Project metadata, scripts, deps, `pi.extensions` entry point                                                           |
-| `tsconfig.json`            | TypeScript config — strict, ESM, `lib: ["ES2022"]` (no DOM), `types: ["node"]`                                         |
-| `.oxlintrc.json`           | Lint config — plugins: typescript, unicorn, oxc, import, jest; test override for `unicorn/consistent-function-scoping` |
-| `vitest.config.ts`         | Test config — includes `tests/**/*.test.ts`                                                                            |
-| `.github/workflows/ci.yml` | CI — matrix test job (latest + min-pi-0.80.2), E2E smoke tests (manual trigger)                                        |
+| File                       | Purpose                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `package.json`             | Project metadata, scripts, deps, `pi.extensions` entry point                                                             |
+| `tsconfig.json`            | TypeScript config — strict, ESM, `lib: ["ES2022"]` (no DOM), `types: ["node"]`                                           |
+| `.oxlintrc.json`           | Lint config — plugins: typescript, unicorn, oxc, import, jest; test override for `unicorn/consistent-function-scoping`   |
+| `vitest.config.ts`         | Test config — includes `tests/**/*.test.ts`                                                                              |
+| `.github/workflows/ci.yml` | CI — 3-variant matrix test job (latest/Node 22, min-pi-0.80.2/Node 22, latest/Node 24), E2E smoke tests (manual trigger) |
 
 ## npm Scripts
 

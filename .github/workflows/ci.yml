@@ -65,17 +65,21 @@ jobs:
       - name: Run unit tests
         run: npm test
 
-  # ── E2E Smoke Tests ────────────────────────────────────────────────────────
+  # ── E2E Smoke Tests (matrix: Node 22 + Node 24) ──────────────────────────
   e2e:
-    name: E2E Smoke Tests
+    name: E2E Smoke Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.run_e2e == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["22", "24"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         run: npm ci
