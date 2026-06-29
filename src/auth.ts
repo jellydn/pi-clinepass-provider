@@ -32,6 +32,36 @@ export interface AuthKeyOptions {
 }
 
 /**
+ * Walk Cline CLI provider entries, extracting a value from each provider's
+ * settings object. Iterates both "cline-pass" and "cline" provider keys.
+ *
+ * Shared between auth.ts (static API key extraction) and workos.ts (WorkOS
+ * OAuth credential extraction) — both need to navigate the same
+ * providers["cline-pass"|"cline"].settings path.
+ *
+ * @param parsed A parsed providers.json object
+ * @param extract Called with each provider's settings record; return undefined
+ *                to skip to the next provider, or a value to stop iteration
+ */
+export function walkClineProviderSettings<T>(
+  parsed: Record<string, unknown>,
+  extract: (settings: Record<string, unknown>) => T | undefined,
+): T | undefined {
+  const providers = isRecord(parsed.providers) ? parsed.providers : undefined;
+  if (!providers) return undefined;
+
+  for (const key of ["cline-pass", "cline"]) {
+    const provider = isRecord(providers[key]) ? providers[key] : undefined;
+    if (!provider) continue;
+    const settings = isRecord(provider.settings) ? provider.settings : undefined;
+    if (!settings) continue;
+    const result = extract(settings);
+    if (result !== undefined) return result;
+  }
+  return undefined;
+}
+
+/**
  * Extract a ClinePass API key from the Cline CLI's nested providers.json
  * structure: providers["cline-pass"].settings.apiKey or
  * providers["cline-pass"].settings.auth.accessToken
@@ -42,26 +72,16 @@ export interface AuthKeyOptions {
  * resolveClineAuthCredentials() + the OAuth refresh flow in oauth.ts.
  */
 function resolveClineProvidersKey(parsed: Record<string, unknown>): string | undefined {
-  const providers = isRecord(parsed.providers) ? parsed.providers : undefined;
-  if (!providers) return undefined;
-
-  // Check both "cline-pass" and "cline" provider entries
-  for (const key of ["cline-pass", "cline"]) {
-    const provider = isRecord(providers[key]) ? providers[key] : undefined;
-    if (!provider) continue;
-    const settings = isRecord(provider.settings) ? provider.settings : undefined;
-    if (!settings) continue;
-
+  return walkClineProviderSettings(parsed, (settings) => {
     // Static API key: settings.apiKey (long-lived, safe to use directly)
     const apiKey = stringValue(settings.apiKey);
     if (apiKey) return apiKey;
 
     // Note: we intentionally do NOT return settings.auth.accessToken here.
     // That is a short-lived WorkOS OAuth token that expires after ~1 hour and
-    // cannot be used as a static API key. It is handled via the OAuth refresh
-    // flow in oauth.ts (resolveClineAuthCredentials + refreshWorkosToken).
-  }
-  return undefined;
+    // cannot be used as a static API key.
+    return undefined;
+  });
 }
 
 /**

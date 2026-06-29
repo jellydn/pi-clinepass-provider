@@ -13,7 +13,7 @@ import { homedir } from "node:os";
 import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import { isRecord, stringValue } from "./utils.js";
 import { resolveApiBase } from "./env.js";
-import { defaultAuthPaths, type AuthKeyOptions } from "./auth.js";
+import { defaultAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js";
 
 // ─── WorkOS Constants ──────────────────────────────────────────────────────
 
@@ -180,20 +180,13 @@ export function resolveClineAuthCredentials(
       const parsed: unknown = JSON.parse(readFile(authPath));
       if (!isRecord(parsed)) continue;
 
-      const providers = isRecord(parsed.providers) ? parsed.providers : undefined;
-      if (!providers) continue;
-
-      for (const key of ["cline-pass", "cline"]) {
-        const provider = isRecord(providers[key]) ? providers[key] : undefined;
-        if (!provider) continue;
-        const settings = isRecord(provider.settings) ? provider.settings : undefined;
-        if (!settings) continue;
+      const creds = walkClineProviderSettings(parsed, (settings) => {
         const auth = isRecord(settings.auth) ? settings.auth : undefined;
-        if (!auth) continue;
+        if (!auth) return undefined;
 
         const accessToken = stringValue(auth.accessToken);
         const refreshToken = stringValue(auth.refreshToken);
-        if (!accessToken || !refreshToken) continue;
+        if (!accessToken || !refreshToken) return undefined;
 
         const expiresAt =
           typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt)
@@ -201,7 +194,9 @@ export function resolveClineAuthCredentials(
             : Date.now() + WORKOS_TOKEN_LIFETIME_MS;
 
         return { accessToken, refreshToken, expiresAt };
-      }
+      });
+
+      if (creds) return creds;
     } catch (e) {
       // Distinguish "file absent" (expected, skip silently) from
       // "file present but corrupt/unreadable" (actionable, warn).
