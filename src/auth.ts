@@ -128,7 +128,11 @@ export function resolveApiKey(
       if (typeof cpField === "string") return cpField;
       if (isRecord(cpField)) {
         const access = stringValue(cpField.access);
-        if (access) return access;
+        // Skip OAuth credential records — they contain short-lived WorkOS
+        // access tokens (prefixed with "workos:"), not static API keys.
+        // The OAuth flow is handled separately via
+        // resolveClineAuthCredentials() + refreshWorkosToken().
+        if (access && !access.startsWith("workos:")) return access;
       }
     } catch (e) {
       // Distinguish "file absent" (expected, skip silently) from

@@ -1,3 +1,8 @@
+/**
+ * Handle pi `message_end` events for ClinePass errors.
+ * Filters, classifies, and surfaces a user-friendly message.
+ */
+
 import { classifyClinePassError } from "./errors.js";
 import { PROVIDER_NAME } from "./env.js";
 

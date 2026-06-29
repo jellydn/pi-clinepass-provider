@@ -3,9 +3,9 @@
  *
  * @module clinepass-env
  */
-
 export const DEFAULT_API_BASE = "https://api.cline.bot";
 export const DEFAULT_ENDPOINT = "/api/v1/chat/completions";
+/** Name of the env var that holds the ClinePass API key. */
 export const ENV_API_KEY = "CLINE_API_KEY";
 
 /**
@@ -29,7 +29,7 @@ export function resolveApiBase(env: Record<string, string | undefined> = process
  * Remove terminal paste wrappers and control chars from API key input.
  */
 export function sanitizeApiKey(input: string): string {
-  const esc = String.fromCharCode(27);
+  const esc = "\x1b";
   return input
     .replaceAll(`${esc}[200~`, "")
     .replaceAll(`${esc}[201~`, "")

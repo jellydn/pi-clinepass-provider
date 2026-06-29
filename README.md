@@ -145,10 +145,28 @@ prek install
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
+## 📋 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
 ## Author
 
+👤 **Huynh Duc Dung**
+
+- Website: https://productsway.com/
+- Twitter: [@jellydn](https://twitter.com/jellydn)
 - Github: [@jellydn](https://github.com/jellydn)
 
 ## Show your support
 
 Give a ⭐️ if this project helped you!
+
+<a href="https://ko-fi.com/dunghd">
+  <img src="https://img.shields.io/badge/ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="ko-fi">
+</a>
+<a href="https://paypal.me/dunghd">
+  <img src="https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal">
+</a>
+<a href="https://www.buymeacoffee.com/dunghd">
+  <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee">
+</a>

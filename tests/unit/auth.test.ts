@@ -24,7 +24,7 @@ describe("resolveApiKey", () => {
     expect(resolveApiKey(undefined, { readFile, fileExists })).toBe("cline_cp_string");
   });
 
-  it("falls back to auth.json with OAuth credentials", () => {
+  it("falls back to auth.json with OAuth-style credentials (non-WorkOS)", () => {
     const readFile = () =>
       JSON.stringify({
         clinepass: {
@@ -35,6 +35,19 @@ describe("resolveApiKey", () => {
       });
     const fileExists = () => true;
     expect(resolveApiKey(undefined, { readFile, fileExists })).toBe("cline_oauth_key");
+  });
+
+  it("skips WorkOS OAuth credentials in pi auth.json (access token starts with workos:)", () => {
+    const readFile = () =>
+      JSON.stringify({
+        clinepass: {
+          type: "oauth",
+          access: "workos:eyJoaShOAuth",
+          refresh: "workos_rt",
+        },
+      });
+    const fileExists = () => true;
+    expect(resolveApiKey(undefined, { readFile, fileExists })).toBeUndefined();
   });
 
   it("extracts apiKey from Cline CLI nested providers.json (cline-pass)", () => {
