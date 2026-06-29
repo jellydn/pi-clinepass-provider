@@ -32,6 +32,49 @@ export interface AuthKeyOptions {
 }
 
 /**
+ * Iterate auth file paths in order, parsing JSON from each and extracting
+ * a value. Handles the shared boilerplate: resolving I/O options, iterating
+ * paths, try/catch with ENOENT suppression, and warning on corrupt files.
+ *
+ * Shared between resolveApiKey (static key extraction) and
+ * resolveClineAuthCredentials (WorkOS credential extraction) — both need
+ * the same file-walking logic with different extractors.
+ *
+ * @param options Auth I/O options (injectable for testing)
+ * @param extract Called with each successfully parsed JSON object;
+ *                return undefined to skip to the next file, or a value to stop
+ */
+export function walkAuthPaths<T>(
+  options: AuthKeyOptions,
+  extract: (parsed: Record<string, unknown>) => T | undefined,
+): T | undefined {
+  const home = options.homeDir?.() ?? homedir();
+  const authPaths = options.authPaths ?? defaultAuthPaths(home);
+  const readFile = options.readFile ?? ((p: string) => readFileSync(p, "utf-8"));
+  const fileExists = options.fileExists ?? ((p: string) => existsSync(p));
+
+  for (const authPath of authPaths) {
+    try {
+      if (!fileExists(authPath)) continue;
+      const parsed: unknown = JSON.parse(readFile(authPath));
+      if (!isRecord(parsed)) continue;
+
+      const result = extract(parsed);
+      if (result !== undefined) return result;
+    } catch (e) {
+      // Distinguish "file absent" (expected, skip silently) from
+      // "file present but corrupt/unreadable" (actionable, warn).
+      // Never log file contents or the resolved key.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes("ENOENT") && !msg.includes("not found")) {
+        console.warn(`[clinepass] Warning: failed to read auth file ${authPath}: ${msg}`);
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Walk Cline CLI provider entries, extracting a value from each provider's
  * settings object. Iterates both "cline-pass" and "cline" provider keys.
  *
@@ -104,46 +147,26 @@ export function resolveApiKey(
   const env = options.env ?? process.env;
   if (env[ENV_API_KEY]) return env[ENV_API_KEY];
 
-  const home = options.homeDir?.() ?? homedir();
-  const authPaths = options.authPaths ?? defaultAuthPaths(home);
-  const readFile = options.readFile ?? ((p: string) => readFileSync(p, "utf-8"));
-  const fileExists = options.fileExists ?? ((p: string) => existsSync(p));
+  return walkAuthPaths(options, (parsed) => {
+    // Cline CLI nested format: providers["cline-pass"].settings.apiKey
+    const clineKey = resolveClineProvidersKey(parsed);
+    if (clineKey) return clineKey;
 
-  for (const authPath of authPaths) {
-    try {
-      if (!fileExists(authPath)) continue;
-      const parsed: unknown = JSON.parse(readFile(authPath));
-      if (!isRecord(parsed)) continue;
+    // pi auth.json format: direct apiKey field
+    const apiKey = stringValue(parsed.apiKey);
+    if (apiKey) return apiKey;
 
-      // Cline CLI nested format: providers["cline-pass"].settings.apiKey or .auth.accessToken
-      const clineKey = resolveClineProvidersKey(parsed);
-      if (clineKey) return clineKey;
-
-      // pi auth.json format: direct apiKey field
-      const apiKey = stringValue(parsed.apiKey);
-      if (apiKey) return apiKey;
-
-      // pi auth.json format: clinepass field (string or OAuth object)
-      const cpField = parsed.clinepass;
-      if (typeof cpField === "string") return cpField;
-      if (isRecord(cpField)) {
-        const access = stringValue(cpField.access);
-        // Skip OAuth credential records — they contain short-lived WorkOS
-        // access tokens (prefixed with "workos:"), not static API keys.
-        // The OAuth flow is handled separately via
-        // resolveClineAuthCredentials() + refreshWorkosToken().
-        if (access && !access.startsWith(WORKOS_TOKEN_PREFIX)) return access;
-      }
-    } catch (e) {
-      // Distinguish "file absent" (expected, skip silently) from
-      // "file present but corrupt/unreadable" (actionable, warn).
-      // Never log file contents or the resolved key.
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!msg.includes("ENOENT") && !msg.includes("not found")) {
-        console.warn(`[clinepass] Warning: failed to read auth file ${authPath}: ${msg}`);
-      }
+    // pi auth.json format: clinepass field (string or OAuth object)
+    const cpField = parsed.clinepass;
+    if (typeof cpField === "string") return cpField;
+    if (isRecord(cpField)) {
+      const access = stringValue(cpField.access);
+      // Skip OAuth credential records — they contain short-lived WorkOS
+      // access tokens (prefixed with "workos:"), not static API keys.
+      // The OAuth flow is handled separately via
+      // resolveClineAuthCredentials() + refreshWorkosToken().
+      if (access && !access.startsWith(WORKOS_TOKEN_PREFIX)) return access;
     }
-  }
-
-  return undefined;
+    return undefined;
+  });
 }

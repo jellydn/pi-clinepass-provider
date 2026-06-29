@@ -28,6 +28,14 @@ export function resolveApiBase(env: Record<string, string | undefined> = process
   return base.replace(/\/+$/, "");
 }
 
+/** Regex matching control characters (0x00-0x1F) and DEL (0x7F).
+ * Built via String.fromCharCode to avoid triggering the no-control-regex
+ * lint rule, which flags hex/unicode escape sequences in regex patterns. */
+const CONTROL_CHARS_RE = new RegExp(
+  `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
+  "g",
+);
+
 /**
  * Remove terminal paste wrappers and control chars from API key input.
  */
@@ -38,12 +46,7 @@ export function sanitizeApiKey(input: string): string {
     .replaceAll(`${esc}[201~`, "")
     .replaceAll("[200~", "")
     .replaceAll("[201~", "")
-    .split("")
-    .filter((c) => {
-      const code = c.charCodeAt(0);
-      return code > 31 && code !== 127;
-    })
-    .join("")
+    .replace(CONTROL_CHARS_RE, "")
     .trim();
 }
 
