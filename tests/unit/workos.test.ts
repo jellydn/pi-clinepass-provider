@@ -1,10 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import {
   resolveClineAuthCredentials,
   isWorkosToken,
+  refreshWorkosToken,
   WORKOS_TOKEN_PREFIX,
   CLINE_REFRESH_ENDPOINT,
+  WORKOS_TOKEN_LIFETIME_MS,
 } from "../../src/workos.js";
+import { DEFAULT_API_BASE } from "../../src/env.js";
 
 // ─── isWorkosToken ──────────────────────────────────────────────────────────
 
@@ -35,6 +39,110 @@ describe("WorkOS constants", () => {
 
   it("exports the Cline refresh endpoint path", () => {
     expect(CLINE_REFRESH_ENDPOINT).toBe("/api/v1/auth/refresh");
+  });
+
+  it("exports a conservative token lifetime (~55 min)", () => {
+    expect(WORKOS_TOKEN_LIFETIME_MS).toBe(55 * 60 * 1000);
+  });
+});
+
+// ─── refreshWorkosToken ─────────────────────────────────────────────────────
+
+/** Build a mock fetch that resolves with the given JSON response body. */
+function mockFetchOK(body: unknown): typeof globalThis.fetch {
+  return vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  ) as unknown as typeof globalThis.fetch;
+}
+
+describe("refreshWorkosToken", () => {
+  it("calls the correct endpoint with granttype + refreshToken in body", async () => {
+    const mockFetch = mockFetchOK({
+      data: { accessToken: "eyJnew_jwt", refreshToken: "new_rt_123" },
+    });
+    const cred: OAuthCredentials = {
+      access: "workos:eyJold...",
+      refresh: "fwdkkS0zeAT8JJd8EYEKJ09sf",
+      expires: Date.now() - 1000,
+    };
+
+    await refreshWorkosToken(cred, { fetch: mockFetch });
+
+    const [url, opts] = (mockFetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe(`${DEFAULT_API_BASE}${CLINE_REFRESH_ENDPOINT}`);
+    const body = JSON.parse((opts as RequestInit).body as string);
+    expect(body.granttype).toBe("refresh_token"); // no underscore
+    expect(body.refreshToken).toBe("fwdkkS0zeAT8JJd8EYEKJ09sf");
+  });
+
+  it("adds workos: prefix when the API returns a bare JWT", async () => {
+    const mockFetch = mockFetchOK({
+      data: { accessToken: "eyJnew_jwt", refreshToken: "new_rt_123" },
+    });
+    const cred: OAuthCredentials = {
+      access: "workos:eyJold...",
+      refresh: "old_rt",
+      expires: Date.now() - 1000,
+    };
+
+    const result = await refreshWorkosToken(cred, { fetch: mockFetch });
+
+    expect(result.access).toBe("workos:eyJnew_jwt");
+    expect(result.refresh).toBe("new_rt_123");
+    expect(result.expires).toBeGreaterThan(Date.now());
+  });
+
+  it("preserves workos: prefix when refresh endpoint already includes it", async () => {
+    const mockFetch = mockFetchOK({
+      data: {
+        accessToken: "workos:eyJnew_with_prefix",
+        refreshToken: "new_rt_with_prefix",
+      },
+    });
+    const cred: OAuthCredentials = {
+      access: "workos:eyJold...",
+      refresh: "old_rt",
+      expires: Date.now() - 1000,
+    };
+
+    const result = await refreshWorkosToken(cred, { fetch: mockFetch });
+
+    // Should not double-prefix
+    expect(result.access).toBe("workos:eyJnew_with_prefix");
+    expect(result.refresh).toBe("new_rt_with_prefix");
+  });
+
+  it("throws on non-OK response from refresh endpoint", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response("Invalid refresh token", { status: 401 }),
+      ) as unknown as typeof globalThis.fetch;
+    const cred: OAuthCredentials = {
+      access: "workos:eyJexpired...",
+      refresh: "expired_rt",
+      expires: Date.now() - 1000,
+    };
+
+    await expect(refreshWorkosToken(cred, { fetch: mockFetch })).rejects.toThrow(
+      /token refresh failed/i,
+    );
+  });
+
+  it("throws when response is missing accessToken or refreshToken", async () => {
+    const mockFetch = mockFetchOK({ data: {} });
+    const cred: OAuthCredentials = {
+      access: "workos:eyJexpired...",
+      refresh: "expired_rt",
+      expires: Date.now() - 1000,
+    };
+
+    await expect(refreshWorkosToken(cred, { fetch: mockFetch })).rejects.toThrow(
+      /unexpected response format/i,
+    );
   });
 });
 

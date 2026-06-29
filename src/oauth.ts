@@ -19,12 +19,12 @@
  */
 
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
-import { sanitizeApiKey, resolveApiBase } from "./env.js";
+import { sanitizeApiKey } from "./env.js";
 import {
   resolveClineAuthCredentials,
   isWorkosToken,
-  CLINE_REFRESH_ENDPOINT,
-  WORKOS_TOKEN_LIFETIME_MS,
+  refreshWorkosToken,
+  credentialsFromWorkos,
   WORKOS_REFRESH_MARGIN_MS,
 } from "./workos.js";
 
@@ -39,73 +39,6 @@ function credentialsFromApiKey(apiKey: string): OAuthCredentials {
     access: apiKey,
     expires: Date.now() + TEN_YEARS_MS,
   };
-}
-
-// ─── WorkOS OAuth helpers ────────────────────────────────────────────────────
-
-function credentialsFromWorkos(
-  accessToken: string,
-  rtToken: string,
-  expiresAt: number,
-): OAuthCredentials {
-  return {
-    access: accessToken,
-    refresh: rtToken,
-    expires: expiresAt,
-  };
-}
-
-/**
- * Refresh a WorkOS OAuth access token via Cline's server-side refresh endpoint.
- *
- * Cline's `/api/v1/auth/refresh` accepts `{ granttype: "refresh_token",
- * refreshToken: "..." }` and returns `{ data: { accessToken, refreshToken } }`.
- * The new access token requires the "workos:" prefix when used as a Bearer
- * token, so we add it if the API returns a bare JWT.
- */
-export async function refreshWorkosToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {
-  const apiBase = resolveApiBase();
-  const response = await fetch(`${apiBase}${CLINE_REFRESH_ENDPOINT}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      granttype: "refresh_token",
-      refreshToken: credentials.refresh,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "unknown error");
-    throw new Error(
-      `ClinePass token refresh failed (${response.status}): ${text}` +
-        " — try running `cline auth` to re-login, or use a static API key.",
-    );
-  }
-
-  const data = (await response.json()) as {
-    data?: { accessToken?: string; refreshToken?: string };
-    accessToken?: string;
-    refreshToken?: string;
-  };
-
-  // The response is { data: { accessToken, refreshToken } } or flat
-  const tokens = data.data ?? data;
-  const newAccessToken = tokens.accessToken;
-  const newRefreshToken = tokens.refreshToken;
-
-  if (!newAccessToken || !newRefreshToken) {
-    throw new Error("ClinePass token refresh returned unexpected response format");
-  }
-
-  // Ensure the workos: prefix is present (the refresh endpoint may return
-  // a bare JWT without it, but the chat API requires it)
-  const prefixedToken = isWorkosToken(newAccessToken) ? newAccessToken : `workos:${newAccessToken}`;
-
-  return credentialsFromWorkos(
-    prefixedToken,
-    newRefreshToken,
-    Date.now() + WORKOS_TOKEN_LIFETIME_MS - WORKOS_REFRESH_MARGIN_MS,
-  );
 }
 
 // ─── Login flow ─────────────────────────────────────────────────────────────
