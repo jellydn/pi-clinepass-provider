@@ -84,8 +84,11 @@ describe("numberValue", () => {
     expect(numberValue("3.14")).toBeCloseTo(3.14);
     expect(numberValue("0")).toBe(0);
     expect(numberValue("-1")).toBe(-1);
-    // parseFloat accepts trailing non-numeric text — design choice
-    expect(numberValue("12px")).toBe(12);
+  });
+
+  it("rejects strings with trailing non-numeric text", () => {
+    expect(numberValue("12px")).toBeUndefined();
+    expect(numberValue("1e")).toBeUndefined();
   });
 
   it("returns undefined for non-parseable strings", () => {
