@@ -1,106 +1,133 @@
 # ARCHITECTURE.md — System Architecture
 
-## Pattern
+## Pattern: Layered + Dependency Injection
 
-**pi Extension (Provider Plugin)** — a self-contained TypeScript module that registers a model provider with the pi coding agent. No server, no build step, no framework. Pure logic + thin integration layer.
+The codebase follows a **layered architecture with dependency injection (DI)** for testability. Every I/O operation (file reads, environment variables, HTTP fetches, home directory) is parameterized through options objects rather than called directly. This allows unit tests to inject mocks without touching the filesystem or network.
 
-## Module Dependency Graph
-
-```
-src/index.ts  (Extension entry point — async default export)
-  ├── src/logic.ts  (Pure logic — models, auth, errors, env)
-  └── src/oauth.ts  (Login/refresh flow — depends on logic.ts)
-```
+## Module Map
 
 ```
-tests/unit/
-  ├── logic.test.ts  (Tests src/logic.ts — 50+ tests)
-  ├── oauth.test.ts  (Tests src/oauth.ts — 7 tests)
-  └── index.test.ts  (Tests src/index.ts — 12 tests)
+src/
+├── index.ts          # Extension entry point — wires everything together
+├── utils.ts          # Shared type guards (isRecord, stringValue, numberValue, booleanValue)
+├── env.ts            # Constants, API base resolution, key sanitization, URL builder
+├── errors.ts         # Error classification (403→subscription, 401→auth, 429→rate limit)
+├── error-handler.ts  # Error surface — filter → classify → deliver pipeline
+├── models.ts         # Static model catalog + dynamic model discovery with fallback
+├── auth.ts           # API key resolution (env var → Cline CLI → pi auth.json)
+├── workos.ts         # WorkOS OAuth — credential extraction, token refresh
+└── oauth.ts          # /login flow — two paths (WorkOS auto-detect, manual paste)
 ```
 
-## Layer Separation
-
-### Layer 1: Pure Logic (`src/logic.ts`)
-
-- **No pi dependency** — fully testable in isolation
-- All I/O parameterized via dependency injection (`AuthKeyOptions`, `RemoteModelsOptions`)
-- Exports: constants, types, model definitions, auth resolvers, error classifier
-- Key functions: `resolveApiKey()`, `resolveClineAuthCredentials()`, `resolveModels()`, `fetchRemoteModels()`, `classifyClinePassError()`
-
-### Layer 2: OAuth Integration (`src/oauth.ts`)
-
-- Depends on `src/logic.ts` for credential parsing and constants
-- Implements pi's `OAuthCredentials` / `OAuthLoginCallbacks` interfaces
-- Exports: `login()`, `refreshToken()`, `getApiKey()`, `refreshWorkosToken()`
-- Two auth paths: WorkOS OAuth (auto-detect from Cline CLI) and static API key (manual paste)
-
-### Layer 3: Extension Entry (`src/index.ts`)
-
-- Thin orchestration layer — wires logic + oauth into pi's `ExtensionAPI`
-- Async default export (dynamic model discovery before registration)
-- Registers provider with `pi.registerProvider()` and error handler with `pi.on("message_end")`
-- No business logic — delegates everything to layers 1-2
-
-## Data Flow
-
-### Registration Flow (startup)
+## Layer Dependencies (top-down)
 
 ```
-1. pi loads src/index.ts via await import()
-2. resolveApiBase() → determines API endpoint
-3. resolveApiKey() → finds API key (env → Cline CLI config → pi auth.json)
-4. resolveModels(apiKey) → tries fetchRemoteModels(), falls back to static MODELS
-5. pi.registerProvider("clinepass", {baseUrl, apiKey, api, oauth, models})
-6. pi.on("message_end", errorHandler) → surfaces friendly 403/401/429 messages
+index.ts
+  ├── env.ts          (resolveApiBase, PROVIDER_NAME, ENV_API_KEY)
+  ├── auth.ts         (resolveApiKey)
+  │     ├── utils.ts  (isRecord, stringValue)
+  │     └── env.ts    (ENV_API_KEY)
+  ├── models.ts       (resolveModels)
+  │     ├── utils.ts  (isRecord, stringValue, numberValue, booleanValue)
+  │     └── env.ts    (resolveApiBase)
+  ├── error-handler.ts (handleClinePassError)
+  │     ├── errors.ts (classifyClinePassError)
+  │     └── env.ts    (PROVIDER_NAME)
+  └── oauth.ts        (login, refreshToken, getApiKey)
+        ├── env.ts    (sanitizeApiKey)
+        └── workos.ts (resolveClineAuthCredentials, refreshWorkosToken, ...)
+              ├── utils.ts  (isRecord, stringValue)
+              ├── env.ts    (resolveApiBase)
+              └── auth.ts   (defaultAuthPaths, walkClineProviderSettings)
 ```
 
-### Request Flow (user sends message)
+**Notable:** `auth.ts` exports `walkClineProviderSettings` which `workos.ts` imports — the shared traversal helper eliminates duplicated provider iteration between the two modules. No circular dependencies exist.
 
+## Three-Stage Error Pipeline
+
+1. **Filter** (`error-handler.ts`) — checks `stopReason === "error"`, `errorMessage` present, `provider === "clinepass"`
+2. **Classify** (`errors.ts`) — pattern-matches the error message against known ClinePass failures
+3. **Deliver** (`error-handler.ts`) — `ctx.ui.notify()` when UI is available, `console.error()` fallback
+
+## Two Authentication Paths
+
+### Path 1: WorkOS OAuth (automatic)
+- Credentials stored by Cline CLI at `~/.cline/data/settings/providers.json`
+- Extracted by `resolveClineAuthCredentials()` in `workos.ts`
+- Short-lived (~1 hour), auto-refreshed via `/api/v1/auth/refresh`
+- Detected by `workos:` token prefix
+
+### Path 2: Static API Key (manual)
+- Created at `app.cline.bot → Settings → API Keys`
+- Long-lived (treated as 10-year expiry)
+- Pasted during `/login` flow
+- Stored in pi's `auth.json` or set via `CLINE_API_KEY` env var
+
+## Key Resolution Priority
+
+`resolveApiKey()` checks in order:
+1. Explicitly provided key (function parameter)
+2. `CLINE_API_KEY` environment variable
+3. `~/.cline/data/settings/providers.json` — Cline CLI nested format (static `apiKey` only; skips WorkOS `auth.accessToken`)
+4. `~/.pi/agent/auth.json` — pi OAuth format (direct `apiKey`, string `clinepass`, or object `clinepass.access`; skips `workos:`-prefixed values)
+
+## Model Resolution
+
+`resolveModels()` tries the remote API first, falls back to the static `MODELS` array:
+1. If an API key is available, calls `fetchRemoteModels()` (5-second timeout)
+2. On any error (network, 404, parse failure, empty list), returns static `MODELS`
+3. Remote models are filtered to only `cline-pass/`-prefixed IDs
+4. Missing fields in remote entries fall back to static model values
+
+## OAuth login Flow
+
+`login()` has two branches:
+1. **WorkOS auto-detect**: if `resolveClineAuthCredentials()` returns credentials, use them (refresh if expired). No browser navigation needed.
+2. **Manual paste**: opens Cline dashboard, prompts user to paste API key. Sanitizes input (terminal paste wrappers, control characters, whitespace).
+
+## Dependency Injection Pattern
+
+Every module that does I/O accepts an options object:
+
+```typescript
+// auth.ts
+export interface AuthKeyOptions {
+  env?: Record<string, string | undefined>;
+  authPaths?: readonly string[];
+  homeDir?: () => string;
+  readFile?: (path: string) => string;
+  fileExists?: (path: string) => boolean;
+}
+
+// models.ts
+export interface RemoteModelsOptions {
+  apiBase?: string;
+  apiKey?: string;
+  fetch?: typeof globalThis.fetch;
+  timeoutMs?: number;
+}
+
+// workos.ts
+export interface WorkosRefreshOptions {
+  fetch?: typeof globalThis.fetch;
+  apiBase?: string;
+}
 ```
-1. pi sends chat completion request to https://api.cline.bot/api/v1/chat/completions
-2. Uses openai-completions streaming (pi built-in, no custom streamSimple)
-3. SSE stream → pi processes tokens, tool calls, usage
-4. On error: message_end event fires with stopReason="error" + errorMessage
-5. Our handler classifies error → surfaces friendly message via ctx.ui.notify()
-```
 
-### OAuth Refresh Flow
+Defaults use the real implementations (`process.env`, `readFileSync`, `existsSync`, `homedir()`, `globalThis.fetch`).
 
-```
-1. pi detects token expiry → calls our refreshToken()
-2. refreshToken() checks if access token has "workos:" prefix
-3. If WorkOS: POST /api/v1/auth/refresh → get new tokens → ensure "workos:" prefix
-4. If static key: no-op (keys don't expire)
-5. Returns updated OAuthCredentials to pi for persistence
-```
+## File Sizes
 
-## Key Abstractions
+| File | Lines | Responsibility |
+|------|-------|---------------|
+| `src/models.ts` | 223 | Model catalog + dynamic discovery |
+| `src/oauth.ts` | 115 | Login + refresh dispatch |
+| `src/auth.ts` | 150 | API key resolution |
+| `src/workos.ts` | 189 | WorkOS token extraction + refresh |
+| `src/index.ts` | 67 | Extension entry point |
+| `src/env.ts` | 63 | Constants + sanitization + URL builder |
+| `src/errors.ts` | 68 | Error classification |
+| `src/error-handler.ts` | 53 | Error pipeline |
+| `src/utils.ts` | 27 | Type guards |
 
-| Abstraction            | Location                          | Purpose                             |
-| ---------------------- | --------------------------------- | ----------------------------------- |
-| `ModelConfig`          | `src/logic.ts`                    | Static model definition shape       |
-| `AuthKeyOptions`       | `src/logic.ts`                    | DI interface for auth file I/O      |
-| `RemoteModelsOptions`  | `src/logic.ts`                    | DI interface for remote model fetch |
-| `ClineAuthCredentials` | `src/logic.ts`                    | WorkOS OAuth credentials shape      |
-| `ClinePassErrorType`   | `src/logic.ts`                    | Error classification union type     |
-| `OAuthCredentials`     | `@earendil-works/pi-ai`           | pi's credential storage shape       |
-| `ExtensionAPI`         | `@earendil-works/pi-coding-agent` | pi's extension API interface        |
-| `ProviderConfig`       | `@earendil-works/pi-coding-agent` | Provider registration config shape  |
-
-## Entry Points
-
-| Entry Point                   | Trigger                                               |
-| ----------------------------- | ----------------------------------------------------- |
-| `src/index.ts` default export | pi loads extension at startup or via `/reload`        |
-| `pi.registerProvider()`       | Called during extension init                          |
-| `pi.on("message_end")`        | Called during extension init                          |
-| `oauth.login()`               | Called when user runs `pi /login` → selects ClinePass |
-| `oauth.refreshToken()`        | Called by pi when stored token expires                |
-
-## Design Decisions
-
-1. **No custom `streamSimple`** — ClinePass uses standard OpenAI Chat Completions format, so pi's built-in `openai-completions` streaming handles everything.
-2. **Static model fallback** — Dynamic model discovery tries the Cline API first, but falls back to a hardcoded `MODELS` array (10 models) on any error. The API endpoint currently returns 404.
-3. **Pure logic separation** — All business logic lives in `src/logic.ts` with injectable I/O, enabling comprehensive unit testing without FS or network access.
-4. **Error surface via `message_end`** — The `after_provider_response` event can't be used for error detection because the OpenAI SDK throws before `onResponse` fires for non-2xx status codes. The `message_end` event carries `stopReason: "error"` and `errorMessage` from the stream's catch block.
+All files are well under the 1,000-line threshold. The largest file (`models.ts`) is half static data (model definitions).

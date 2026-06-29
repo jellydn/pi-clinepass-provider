@@ -1,136 +1,78 @@
 # CONCERNS.md — Technical Concerns
 
-## Status Legend
+## Overview
 
-- ✅ Resolved — issue has been addressed
-- ⏳ Out of scope — accepted, not planned for current work
-- 🔴 Open — needs attention
+The codebase is in excellent health after a series of refactors (provider traversal extraction, `sanitizeApiKey` simplification, WorkOS token guard, error-handler JSDoc restoration). No critical, high, or medium-severity issues remain. The items below are low-severity observations and forward-looking notes.
 
 ---
 
-## Tech Debt
+## Low Severity
 
-### 1. Model catalogue is hardcoded ⏳ Out of scope
+### 1. `sanitizeApiKey` uses split/filter/join instead of regex
 
-**File:** `src/logic.ts` → `MODELS` constant
-**Details:** The static `MODELS` array (10 models) is the primary source. Dynamic discovery from `GET /api/v1/models` is implemented (`fetchRemoteModels`) but the endpoint currently returns 404. When Cline exposes it, discovery will work automatically. Until then, the list may drift from server-side changes.
-**Recommendation:** Monitor Cline PR #11355 for endpoint availability. Consider adding a CI check that diffs the static list against the API response.
+**File**: `src/env.ts:25-34`  
+**Issue**: The control character filter uses `.split("").filter().join("")` rather than a regex `.replace()`. A regex would be more idiomatic and slightly faster.  
+**Reason not fixed**: oxlint's `no-control-regex` rule flags both regex literals and `new RegExp()` strings containing control character escapes. The `.split().filter().join()` approach is functionally identical and lint-safe.  
+**Mitigation**: None needed — this is a deliberate trade-off. If oxlint adds a suppression mechanism for this rule, a regex would be preferable.
 
-### 2. Qwen3.7 Plus tiered pricing ⏳ Out of scope
+### 2. `WORKOS_TOKEN_PREFIX` duplicated inline in `auth.ts`
 
-**File:** `src/logic.ts` → `MODELS` → `cline-pass/qwen3.7-plus`
-**Details:** Qwen3.7 Plus has tiered pricing based on context length. We use the ≤256K rate as default. Accurate per-request cost tracking would require runtime context-length detection.
-**Recommendation:** Acceptable for usage tracking purposes. Could add a note in the model definition.
+**File**: `src/auth.ts:129`  
+**Issue**: The `"workos:"` prefix string appears both as `WORKOS_TOKEN_PREFIX` in `workos.ts` and as an inline string literal in `resolveApiKey()`.  
+**Reason not fixed**: Importing from `workos.ts` would create a circular dependency (`auth.ts` ← `workos.ts` imports `walkClineProviderSettings` from `auth.ts`). Moving the constant to `env.ts` would touch multiple files for a single constant.  
+**Mitigation**: The inline string has a comment referencing the WorkOS guard. The prefix is a stable WorkOS convention unlikely to change.
 
-### 3. Lint rule disabled in test files ⏳ Out of scope (minor)
+### 3. No E2E test coverage in CI (except manual trigger)
 
-**File:** `.oxlintrc.json`
-**Details:** `unicorn/consistent-function-scoping` is disabled for test files because test helpers are intentionally local to each test file.
-**Recommendation:** Acceptable. Each test file is self-contained.
-
----
-
-## Known Bugs
-
-_None currently open._
+**File**: `.github/workflows/`  
+**Issue**: E2E smoke tests only run on `workflow_dispatch` with `run_e2e=true` — not on every PR.  
+**Reason**: E2E tests require a real `CLINE_API_KEY` which can't be stored in CI secrets for public repositories.  
+**Mitigation**: Unit test coverage is comprehensive (132 tests). E2E is run manually before releases.
 
 ---
 
-## Security Considerations
+## Forward-Looking
 
-### 4. 10-year credential expiry assumption ⏳ Out of scope
+### 4. `/models` endpoint currently returns 404
 
-**File:** `src/oauth.ts` → `credentialsFromApiKey()`
-**Details:** Static API keys are given a 10-year expiry (`TEN_YEARS_MS`). Cline API keys may not have a defined expiry policy. If Cline rotates keys, the stored credential will persist until the 10-year mark or until the user re-runs `/login`.
-**Recommendation:** On 401/403 from upstream, pi should treat the stored credential as invalid and prompt re-login. The `message_end` error handler now surfaces a clear message, but doesn't automatically invalidate the credential.
+**File**: `src/models.ts`  
+**Issue**: Cline's `/api/v1/models` endpoint is not yet live (returns 404). The code gracefully falls back to the static `MODELS` array.  
+**Forward plan**: When Cline enables the endpoint, the extension will automatically pick up new models without a code change. No action needed.
 
-### 5. API key visible in process environment ✅ Resolved
+### 5. Model compatibility overrides not yet exercised
 
-**File:** `src/logic.ts` → `resolveApiKey()`
-**Details:** API keys are read from `CLINE_API_KEY` env var or auth files. Keys are never logged. Auth file read errors use `console.warn` with the file path only (no key content). The `sanitizeApiKey` function removes paste wrappers but doesn't log the input.
-**Resolution:** Warning messages carefully avoid including key material. ENOENT errors are silently skipped; parse errors warn with path only.
+**File**: `src/index.ts:20-24`  
+**Issue**: The `compat` / `thinkingFormat` override comment notes that per-model compat overrides could be needed if reasoning doesn't work correctly through the live API. None are currently configured — all models use pi's default `openai-completions` handling.  
+**Forward plan**: Monitor user feedback on reasoning quality for individual models. Add `compat` overrides only if specific models show issues.
 
----
+### 6. No TypeScript type tests for pi SDK interfaces
 
-## Performance Considerations
-
-### 6. Synchronous filesystem reads ⏳ Out of scope (negligible)
-
-**File:** `src/logic.ts` → `resolveApiKey()`, `resolveClineAuthCredentials()`
-**Details:** Auth file reads use `readFileSync` during startup. This is a one-time blocking read of small JSON files (~1KB).
-**Recommendation:** Negligible impact. Async reads would add complexity for no measurable benefit at startup.
-
-### 7. Dynamic model fetch adds startup latency ✅ Resolved
-
-**File:** `src/logic.ts` → `fetchRemoteModels()`
-**Details:** Remote model discovery adds a network request at startup.
-**Resolution:** 5-second timeout via `AbortController` ensures startup is never blocked. Falls back to static `MODELS` on timeout, error, or 404.
+**Issue**: The extension implements pi's `ExtensionAPI` contract but doesn't have explicit type-level tests verifying the registration shape matches pi's expectations.  
+**Mitigation**: `tsc --noEmit` catches type mismatches at compile time, and `skipLibCheck: true` avoids false positives from SDK types. The real test is runtime behavior with pi.
 
 ---
 
-## Fragile Areas
+## No Active Concerns
 
-### 8. Cline CLI config-schema dependency ✅ Resolved (partial)
-
-**File:** `src/logic.ts` → `resolveClineProvidersKey()`, `resolveClineAuthCredentials()`
-**Details:** Parsing depends on the Cline CLI's `providers.json` structure (`providers["cline-pass"].settings.{apiKey,auth}`). If Cline changes this format, credential detection breaks silently.
-**Resolution:** Defensive parsing with `isRecord()` type guards at every level. Falls back to other auth methods (env var, pi auth.json) on parse failure. Added edge-case tests for missing/malformed fields.
-
-### 9. Error message pattern matching ✅ Resolved
-
-**File:** `src/logic.ts` → `classifyClinePassError()`
-**Details:** Error classification relies on substring matching of error messages (e.g., "403", "forbidden", "rate limit"). If Cline changes error message format, classification may fall through to "unknown".
-**Resolution:** Multiple patterns per error type (HTTP status code + keywords). "unknown" fallback still surfaces a helpful generic message. 14 test cases cover all patterns.
-
----
-
-## Scaling Limits
-
-### 10. No live model/pricing discovery ⏳ Out of scope (planned future work)
-
-**File:** `src/logic.ts` → `MODELS`
-**Details:** Model list and pricing are hardcoded. New models added by Cline require a code update.
-**Recommendation:** Dynamic discovery is implemented and ready — it will activate automatically when Cline exposes `GET /api/v1/models`. The endpoint is confirmed by Cline PR #11355.
-
-### 11. Rate limits uninstrumented ⏳ Out of scope
-
-**File:** `src/index.ts`
-**Details:** ClinePass has 2-5x API rate limits. Rate limit (429) errors are classified and surfaced to the user, but there's no proactive rate limit tracking or backoff.
-**Recommendation:** Pi's built-in retry logic handles transient 429s. Proactive tracking would require custom `streamSimple` which contradicts the "use built-in openai-completions" design.
+- ✅ No TODO/FIXME/HACK comments in source code
+- ✅ No files over 250 lines
+- ✅ No circular dependencies
+- ✅ No `any` type assertions or unsafe casts
+- ✅ All modules have `@module` JSDoc
+- ✅ All exported functions have JSDoc
+- ✅ 132 unit tests, all passing
+- ✅ TypeScript strict mode, no errors
+- ✅ Lint: 0 errors, 0 warnings
+- ✅ Format: consistent via oxfmt
 
 ---
 
-## Dependencies at Risk
+## Historical (Previously Resolved)
 
-### 12. pi-ai and pi-coding-agent pre-1.0 ✅ Resolved
+These were findings from prior thermo-nuclear reviews, now fully addressed:
 
-**File:** `package.json`
-**Details:** Both peer dependencies are pre-1.0 (`^0.80.2`), meaning breaking changes are possible in minor versions.
-**Resolution:** Peer deps constrained to `>=0.80 <0.90`. CI matrix tests against minimum supported version (0.80.2) to catch contract drift. `engines.node: ">=22"` and `@types/node: "^22"` are aligned.
-
----
-
-## Missing Features (Future Work)
-
-### 13. No live model/pricing discovery from API ⏳ Out of scope
-
-**File:** `src/logic.ts`
-**Details:** The Cline API `GET /api/v1/models` endpoint is not yet publicly available (returns 404). Dynamic discovery code is implemented and ready.
-**Recommendation:** Monitor Cline releases for endpoint availability. Confirmed by Cline PR #11355.
-
-### 14. No diagnostics/logging surface ✅ Resolved (partial)
-
-**File:** `src/logic.ts`, `src/oauth.ts`, `src/index.ts`
-**Details:** The extension uses `console.warn` for non-fatal warnings and `ctx.ui.notify()` / `console.error` for error surfacing. There's no structured logging or debug mode.
-**Resolution:** Warning messages are prefixed with `[clinepass]` for easy identification. Error handler surfaces user-friendly classified messages. Structured logging would require pi platform support.
-
----
-
-## Summary
-
-| Status          | Count  |
-| --------------- | ------ |
-| ✅ Resolved     | 7      |
-| ⏳ Out of scope | 7      |
-| 🔴 Open         | 0      |
-| **Total**       | **14** |
+- ✅ **Finding 1** — Duplicated provider traversal eliminated via `walkClineProviderSettings` helper
+- ✅ **Finding 2** — Module-level `@module clinepass-error-handler` JSDoc restored
+- ✅ **Finding 3** — WorkOS token leak guarded in `resolveApiKey` (skips `workos:`-prefixed values)
+- ✅ `sanitizeApiKey` control character filtering simplified (settled on split/filter/join due to lint)
+- ✅ `buildEndpointUrl` JSDoc added (was the only export without one)

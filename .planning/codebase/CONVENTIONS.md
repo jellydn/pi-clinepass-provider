@@ -1,129 +1,116 @@
-# CONVENTIONS.md — Coding Conventions
+# CONVENTIONS.md — Code Conventions
 
-## Language & Style
+## Language
 
-| Aspect        | Convention                                                    |
-| ------------- | ------------------------------------------------------------- |
-| Language      | TypeScript (strict mode)                                      |
-| Module system | ESM (`import`/`export`, `.js` extensions in relative imports) |
-| Strictness    | `strict: true`, `noEmit: true`, `skipLibCheck: true`          |
-| Formatting    | `oxfmt` (Rust-based formatter)                                |
-| Linting       | `oxlint` with typescript, unicorn, oxc, import, jest plugins  |
-| Lib           | `["ES2022"]` — no DOM (Node-only extension)                   |
-| Types         | `["node"]` — Node.js globals only                             |
+- **TypeScript** with `strict: true`
+- **ESM** modules (`.js` extension in imports)
+- Target **ES2022**, no downlevel compilation needed
 
-## Import Style
+## Module Organization
 
-- Relative imports use `.js` extensions: `import { ... } from "./logic.js"`
-- Type-only imports use `import type { ... }`: `import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"`
-- Imports grouped: external packages first, then internal modules
+- Each source file has a single responsibility
+- Every file starts with a `@module clinepass-<name>` JSDoc block
+- Exported functions have JSDoc comments describing their purpose
+- Internal helpers (not exported) have no JSDoc by convention unless complex
+- All files under 250 lines; most are 50–150 lines
 
-```typescript
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { resolveApiBase, resolveApiKey, resolveModels } from "./logic.js";
-import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
-```
+## Type Guards (`src/utils.ts`)
 
-## Type Patterns
-
-- **No `any` type** — use `unknown` and narrow with type guards
-- **Type guards** as standalone functions: `isRecord()`, `stringValue()`, `numberValue()`, `booleanValue()`
-- **Interfaces** for object shapes, **type aliases** for unions
-- **Readonly** where possible: `readonly ModelConfig[]`, `readonly ["text"]`
+Four canonical type guards are used everywhere:
 
 ```typescript
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+isRecord(value: unknown): value is Record<string, unknown>
+stringValue(value: unknown): string | undefined
+numberValue(value: unknown): number | undefined
+booleanValue(value: unknown): boolean | undefined
 ```
+
+These are the only way to safely extract typed values from `unknown` in the codebase. No `any` casts or `as` assertions are used for data extraction.
+
+### `numberValue` Specifics
+- Only finite numbers pass (`Number.isFinite`)
+- Strings are parsed via `Number(value)`; rejected if they have trailing non-numeric text (e.g., `"12px"` → `undefined`)
+- `Infinity`, `-Infinity`, `NaN` → `undefined`
+- Empty/whitespace-only strings → `undefined`
 
 ## Dependency Injection
 
-All I/O is parameterized via options objects for testability:
+Every function that performs I/O accepts an options object with injectable alternatives:
 
 ```typescript
-export interface AuthKeyOptions {
-  env?: Record<string, string | undefined>;
-  authPaths?: readonly string[];
-  homeDir?: () => string;
-  readFile?: (path: string) => string;
-  fileExists?: (path: string) => boolean;
-}
+export function resolveApiKey(
+  providedKey?: string,
+  options: AuthKeyOptions = {},
+): string | undefined { ... }
 ```
 
-- Functions accept optional `options` parameter with injectable I/O
-- Default to real implementations (`process.env`, `readFileSync`, `existsSync`)
-- Tests pass mock implementations — no FS or network access needed
+Defaults use real implementations:
+- `options.env ?? process.env`
+- `options.readFile ?? ((p: string) => readFileSync(p, "utf-8"))`
+- `options.fileExists ?? ((p: string) => existsSync(p))`
+- `options.homeDir?.() ?? homedir()`
+- `options.fetch ?? globalThis.fetch`
 
 ## Error Handling
 
-| Pattern                                   | Where                          | Example                                                      |
-| ----------------------------------------- | ------------------------------ | ------------------------------------------------------------ |
-| `console.warn` for non-fatal warnings     | `src/logic.ts`, `src/oauth.ts` | `[clinepass] Warning: failed to read auth file`              |
-| `console.error` for UI-less error surface | `src/index.ts`                 | `[clinepass] ClinePass subscription required...`             |
-| `throw new Error()` for fatal failures    | `src/oauth.ts`                 | `throw new Error("ClinePass token refresh failed...")`       |
-| `ctx.ui.notify()` for user-facing errors  | `src/index.ts`                 | `ctx.ui.notify(friendlyMessage, "error")`                    |
-| Silent catch with fallback                | `src/logic.ts`                 | `fetchRemoteModels` catches all errors → returns `undefined` |
+### File Read Errors
+- `ENOENT` errors (file not found) are silently skipped — expected during normal operation
+- Other errors (corrupt JSON, permission denied) are logged via `console.warn()` with a `[clinepass]` prefix
+- File contents and resolved keys are **never** logged
 
-### Error Classification Pattern
+### Network Errors
+- `fetchRemoteModels()` catches all errors and returns `undefined` — callers fall back to static data
+- `refreshWorkosToken()` throws on timeout (`DOMException` with `name === "AbortError"`) and non-OK responses with descriptive messages
 
-```typescript
-export function classifyClinePassError(errorMessage: string): {
-  type: ClinePassErrorType;
-  message: string;
-};
-```
-
-Errors are pattern-matched on lowercased message text for HTTP status codes and keywords. User-friendly messages are stored in a constant map (`CLINEPASS_ERROR_MESSAGES`).
-
-## Section Organization
-
-Files use `// ─── Section Name ───...` comment dividers:
-
-```typescript
-// ─── Constants ──────────────────────────────────────────────────────────────
-// ─── Model Definitions ─────────────────────────────────────────────────────
-// ─── Dynamic Model Discovery ───────────────────────────────────────────────
-// ─── API Key Resolution ──────────────────────────────────────────────────────
-// ─── WorkOS OAuth Token Support ─────────────────────────────────────────────
-// ─── Error Classification ───────────────────────────────────────────────────
-// ─── Environment Helpers ────────────────────────────────────────────────────
-```
-
-## JSDoc Conventions
-
-- Module-level JSDoc at top of file with `@module` tag
-- Function JSDoc with `@param`, `@returns` for exported functions
-- Inline comments for "why" not "what"
-- References to external docs: `per Cline PR #11355`, `https://docs.cline.bot/...`
+### User-Facing Errors
+- ClinePass API errors (403, 401, 429) are classified via `classifyClinePassError()` and surfaced through pi's UI notification system
+- Non-ClinePass errors are silently ignored (early return in `handleClinePassError`)
 
 ## Naming Conventions
 
-| Category    | Convention            | Example                                   |
-| ----------- | --------------------- | ----------------------------------------- |
-| Constants   | UPPER_SNAKE_CASE      | `DEFAULT_API_BASE`, `WORKOS_TOKEN_PREFIX` |
-| Functions   | camelCase             | `resolveApiKey`, `fetchRemoteModels`      |
-| Interfaces  | PascalCase            | `ModelConfig`, `AuthKeyOptions`           |
-| Types       | PascalCase            | `ClinePassErrorType`                      |
-| Type guards | `isXxx()` / `isXxx()` | `isRecord`, `isWorkosToken`               |
-| Parsers     | `parseXxx()`          | `parseRemoteModel`                        |
-| Resolvers   | `resolveXxx()`        | `resolveApiKey`, `resolveModels`          |
-| Builders    | `buildXxx()`          | `buildEndpointUrl`                        |
-| Sanitizers  | `sanitizeXxx()`       | `sanitizeApiKey`                          |
+| Category | Convention | Examples |
+|----------|-----------|----------|
+| Functions | camelCase | `resolveApiKey`, `fetchRemoteModels` |
+| Types/Interfaces | PascalCase | `ModelConfig`, `AuthKeyOptions` |
+| Constants | SCREAMING_CASE | `DEFAULT_API_BASE`, `PROVIDER_NAME` |
+| Files | kebab-case | `error-handler.ts` |
+| Test files | `<name>.test.ts` | `auth.test.ts` |
+| Test describes | function name | `describe("resolveApiKey", ...)` |
+| Module tags | `clinepass-<module>` | `@module clinepass-auth` |
 
-## Lint Overrides
+## Imports
 
-Test files disable `unicorn/consistent-function-scoping` (test helpers are local):
+- Node built-ins first (`node:fs`, `node:os`, `node:path`)
+- pi SDK types second (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`)
+- Internal modules last (`./env.js`, `./utils.js`)
+- Use `.js` extension for internal imports (ESM convention)
+- No barrel files — direct imports only
 
-```json
-{
-  "overrides": [
-    {
-      "files": ["tests/**/*.test.ts"],
-      "rules": {
-        "unicorn/consistent-function-scoping": "off"
-      }
-    }
-  ]
-}
-```
+## Comments
+
+- Source comments use `//` with a space after the slashes
+- Section dividers: `// ─── Section Name ─────────────────────────────────────`
+- JSDoc for all exported functions and interfaces
+- Inline comments explain **why**, not **what**
+
+## Formatting
+
+- **Formatter**: oxfmt (Biome-compatible)
+- No manual formatting decisions — oxfmt handles everything
+- CI checks formatting with `npm run format:check`
+
+## Linting
+
+- **Linter**: oxlint with TypeScript + unicorn + oxc + import + jest plugins
+- `correctness` rules are errors
+- `suspicious` rules are warnings
+- `unicorn/consistent-function-scoping` disabled in test files (`.oxlintrc.json` override)
+- Pre-commit hooks via `prek` enforce lint + format + basic file hygiene
+
+## Version Control
+
+- Main branch: `main`
+- Feature branches: `feat/<name>`
+- Commits use conventional commit format: `type(scope): message`
+- Releases via `bumpp` (auto-bumps version, commits, tags, pushes)
+- No pre-commit hook enforcement on commits (use `--no-verify` when needed)

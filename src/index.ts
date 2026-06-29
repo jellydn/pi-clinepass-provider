@@ -19,14 +19,10 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import {
-  resolveApiBase,
-  resolveApiKey,
-  resolveModels,
-  classifyClinePassError,
-  PROVIDER_NAME,
-  ENV_API_KEY,
-} from "./logic.js";
+import { resolveApiBase, PROVIDER_NAME, ENV_API_KEY } from "./env.js";
+import { resolveApiKey } from "./auth.js";
+import { resolveModels } from "./models.js";
+import { handleClinePassError } from "./error-handler.js";
 import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
 // Note on compat/thinkingFormat: ClinePass exposes a standard OpenAI-compatible
@@ -78,31 +74,7 @@ export default async function (pi: ExtensionAPI) {
   // ClinePass returns 403 when the user is not subscribed or tries to use
   // ClinePass at the organization level (per Cline PR #11355). Without this
   // handler, the user sees a generic "Provider returned an error stop reason"
-  // message. We intercept message_end events for clinepass errors and surface
-  // a clear, actionable message instead.
-  pi.on("message_end", (event, ctx) => {
-    // The message object carries stopReason and errorMessage from the stream.
-    // Access defensively since AgentMessage may not export these fields in
-    // its public type definition.
-    const msg = event.message as {
-      stopReason?: string;
-      errorMessage?: string;
-      provider?: string;
-    };
-
-    if (msg.stopReason !== "error" || !msg.errorMessage) return;
-
-    // Only handle errors from our provider (check both the message's provider
-    // field and the current model context as fallback).
-    const provider = msg.provider ?? ctx.model?.provider;
-    if (provider !== PROVIDER_NAME) return;
-
-    const { message: friendlyMessage } = classifyClinePassError(msg.errorMessage);
-
-    if (ctx.hasUI) {
-      ctx.ui.notify(friendlyMessage, "error");
-    } else {
-      console.error(`[clinepass] ${friendlyMessage}`);
-    }
-  });
+  // message. The handler in error-handler.ts owns the full pipeline:
+  // filter → classify → deliver.
+  pi.on("message_end", handleClinePassError);
 }
