@@ -8,6 +8,8 @@
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
+[![Image from Gyazo](https://i.gyazo.com/f157bb2431d7c77556d5748c8b58c7a9.gif)](https://gyazo.com/f157bb2431d7c77556d5748c8b58c7a9)
+
 ## 🏠 [Homepage](https://github.com/jellydn/pi-clinepass-provider)
 
 ## Pre-requirements
@@ -25,6 +27,8 @@ ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom 
 - `/login` integration — automatic WorkOS OAuth detection or browser-assisted manual paste
 
 ## Supported Models
+
+![Models](models.png)
 
 | Model             | Model ID                       | Context |
 | :---------------- | :----------------------------- | :------ |
