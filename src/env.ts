@@ -44,6 +44,9 @@ export function sanitizeApiKey(input: string): string {
     .trim();
 }
 
+/**
+ * Build the chat completions endpoint URL for a given API base.
+ */
 export function buildEndpointUrl(base: string): string {
   return `${base}${DEFAULT_ENDPOINT}`;
 }

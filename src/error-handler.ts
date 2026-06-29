@@ -1,6 +1,12 @@
 /**
- * Handle pi `message_end` events for ClinePass errors.
- * Filters, classifies, and surfaces a user-friendly message.
+ * ClinePass error handler — owns the full error surface pipeline.
+ *
+ * Three responsibilities:
+ * 1. Filter — is this a ClinePass error? (stopReason=error, provider match)
+ * 2. Classify — delegates to classifyClinePassError from errors.ts
+ * 3. Deliver — ctx.ui.notify or console.error fallback
+ *
+ * @module clinepass-error-handler
  */
 
 import { classifyClinePassError } from "./errors.js";
