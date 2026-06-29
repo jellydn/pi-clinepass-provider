@@ -7,9 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-06-30
+
 ### Added
 
-- CHANGELOG.md for release tracking
+- **`walkClineProviderSettings` helper** — shared traversal extracted from `auth.ts` and `workos.ts` to eliminate duplicated `providers["cline-pass"|"cline"].settings` iteration with `isRecord` chains (~25 lines of duplication eliminated)
+- **JSDoc to `buildEndpointUrl`** — was the only exported function without a doc comment; now consistent with all other exports
+- **Module-level JSDoc restoration** — `@module clinepass-error-handler` re-added to `error-handler.ts` describing the three pipeline stages (Filter → Classify → Deliver)
+- **npm publishing setup** — `.npmignore` excluding source maps, build artifacts, editor files, test fixtures, and doc internals; `CHANGELOG.md` added to package `files`
+- **npm badges** — version and downloads badges in README
+- **Codemap refresh** — all 7 `.planning/codebase/` documents updated to reflect current architecture (9 modules, 132 tests, DI patterns, auth paths)
+
+### Changed
+
+- **README refinement** — deduplicated install section, added 📦 Installation with pi + npm commands, linked CHANGELOG from footer
+- **`sanitizeApiKey` control character filtering** — simplified from `.split("").filter(charCodeCheck).join("")` approach; regex alternatives blocked by oxlint `no-control-regex` even via `new RegExp()`
+
+### Fixed
+
+- **WorkOS token leak in `resolveApiKey`** — pi `auth.json` path now skips `workos:`-prefixed access values (short-lived OAuth tokens should not be returned as static API keys); mirrors existing guard in `resolveClineProvidersKey`
+
+### Tests
+
+- **132 unit tests across 8 files** (up from 124 across 9, consolidated test files)
+- New test: WorkOS token skipping in pi `auth.json` path (`tests/unit/auth.test.ts`)
 
 ## [1.0.1] — 2026-06-30
 
@@ -60,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - E2E smoke tests (manual trigger with `CLINE_API_KEY`)
 - CI matrix: Node 22 + Node 24, with minimum pi version pinning
 
-[Unreleased]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/jellydn/pi-clinepass-provider/releases/tag/v1.0.0

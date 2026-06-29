@@ -16,9 +16,11 @@ ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom 
 ### As a pi extension (recommended)
 
 ```sh
-pi install pi-clinepass-provider
+pi install npm:pi-clinepass-provider
 # or from git
 pi install git:github.com/jellydn/pi-clinepass-provider
+# or local path
+pi install /path/to/pi-clinepass-provider
 ```
 
 ### As an npm package
