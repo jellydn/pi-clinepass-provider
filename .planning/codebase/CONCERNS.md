@@ -2,13 +2,13 @@
 
 ## Overview
 
-The codebase is in excellent health after a series of refactors (provider traversal extraction, `sanitizeApiKey` hardening, WorkOS token guard, error-handler JSDoc restoration). No critical, high, or medium-severity issues remain. The items below are classified by nature: **tooling constraints**, **dependency inversion trade-offs**, **coverage gaps**, and **forward-looking notes**.
+The codebase is in excellent health after a series of refactors (provider traversal extraction, `sanitizeApiKey` regex simplification via `String.fromCharCode`, WorkOS token guard, `walkAuthPaths` consolidation, error-handler JSDoc restoration). No critical, high, or medium-severity issues remain. The two remaining items below are **coverage gaps** (unfixable without private CI secrets) and **forward-looking notes** (need real-world usage data).
 
 ---
 
 ## Coverage Gaps
 
-### 2. No integration-level test coverage in CI
+### 1. No integration-level test coverage in CI
 
 **File**: `.github/workflows/`  
 **Issue**: E2E smoke tests only run on `workflow_dispatch` with `run_e2e=true` — not on every PR.  
@@ -24,15 +24,11 @@ The codebase is in excellent health after a series of refactors (provider traver
 
 ## Forward-Looking
 
-### 3. Model compatibility overrides not yet exercised
+### 2. Model compatibility overrides not yet exercised
 
 **File**: `src/index.ts:20-24`  
 **Issue**: The `compat` / `thinkingFormat` override mechanism is documented but no model currently uses it — all models rely on pi's default `openai-completions` handling for reasoning.  
 **Forward plan**: Monitor user feedback on reasoning quality for individual models. Add `compat` overrides only if specific models show issues through the live API.
-
-### 4. ~~No TypeScript type-level tests for pi SDK interface~~
-
-**Resolved** — `tests/type/contract.ts` added: a compile-time type assertion that our default export conforms to pi's `(api: ExtensionAPI) => Promise<void>` contract. Named without `.test` suffix so vitest skips it; `tsconfig.json`'s `include: ["tests/**/*.ts"]` picks it up for type-checking.
 
 ---
 
@@ -58,5 +54,5 @@ These were findings from prior thermo-nuclear reviews, now fully addressed:
 - ✅ **Finding 1** — Duplicated provider traversal eliminated via `walkClineProviderSettings` helper
 - ✅ **Finding 2** — Module-level `@module clinepass-error-handler` JSDoc restored
 - ✅ **Finding 3** — WorkOS token leak guarded in `resolveApiKey` (skips `workos:`-prefixed values)
-- ✅ `sanitizeApiKey` control character filtering simplified (settled on split/filter/join due to lint)
+- ✅ `sanitizeApiKey` control character filtering simplified to `CONTROL_CHARS_RE` regex via `String.fromCharCode()` (avoids `no-control-regex` lint)
 - ✅ `buildEndpointUrl` JSDoc added (was the only export without one)
