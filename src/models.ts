@@ -247,7 +247,6 @@ export async function fetchRemoteModels(
 
     return parsed.length > 0 ? parsed : undefined;
   } catch {
-    // Network error, timeout, or parse failure — fall back to static list
     return undefined;
   } finally {
     clearTimeout(timer);
@@ -272,9 +271,7 @@ export async function resolveModels(
 ): Promise<readonly ModelConfig[]> {
   if (apiKey) {
     const remote = await fetchRemoteModels({ ...options, apiKey });
-    if (remote && remote.length > 0) {
-      return remote;
-    }
+    if (remote) return remote;
   }
   return MODELS;
 }
