@@ -12,13 +12,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import { isRecord, stringValue } from "./utils.js";
-import { resolveApiBase } from "./env.js";
+import { resolveApiBase, WORKOS_TOKEN_PREFIX } from "./env.js";
+
+// Re-export for consumers that import from this module (tests)
+export { WORKOS_TOKEN_PREFIX };
 import { defaultAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js";
 
 // ─── WorkOS Constants ──────────────────────────────────────────────────────
-
-/** Prefix that identifies WorkOS OAuth access tokens (e.g. "workos:eyJ..."). */
-export const WORKOS_TOKEN_PREFIX = "workos:";
 
 /** Cline's server-side token refresh endpoint (relative to the API base). */
 export const CLINE_REFRESH_ENDPOINT = "/api/v1/auth/refresh";

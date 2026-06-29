@@ -8,6 +8,9 @@ export const DEFAULT_ENDPOINT = "/api/v1/chat/completions";
 /** Name of the env var that holds the ClinePass API key. */
 export const ENV_API_KEY = "CLINE_API_KEY";
 
+/** Prefix that identifies WorkOS OAuth access tokens (e.g. "workos:eyJ..."). */
+export const WORKOS_TOKEN_PREFIX = "workos:";
+
 /**
  * The ClinePass provider name used in pi (pi registerProvider name).
  * Models are referenced as `clinepass/<model-slug>`.

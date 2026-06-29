@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { isRecord, stringValue } from "./utils.js";
-import { ENV_API_KEY } from "./env.js";
+import { ENV_API_KEY, WORKOS_TOKEN_PREFIX } from "./env.js";
 
 /**
  * Default auth file paths checked in order.
@@ -132,7 +132,7 @@ export function resolveApiKey(
         // access tokens (prefixed with "workos:"), not static API keys.
         // The OAuth flow is handled separately via
         // resolveClineAuthCredentials() + refreshWorkosToken().
-        if (access && !access.startsWith("workos:")) return access;
+        if (access && !access.startsWith(WORKOS_TOKEN_PREFIX)) return access;
       }
     } catch (e) {
       // Distinguish "file absent" (expected, skip silently) from
