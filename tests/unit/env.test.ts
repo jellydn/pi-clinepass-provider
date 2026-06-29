@@ -41,6 +41,38 @@ describe("resolveApiBase", () => {
       "https://custom.example.com",
     );
   });
+
+  it("removes trailing slashes from override", () => {
+    expect(resolveApiBase({ CLINE_API_BASE: "https://api.cline.bot/" })).toBe(
+      "https://api.cline.bot",
+    );
+  });
+
+  it("removes multiple trailing slashes from override", () => {
+    expect(resolveApiBase({ CLINE_API_BASE: "https://api.cline.bot///" })).toBe(
+      "https://api.cline.bot",
+    );
+  });
+
+  it("trims whitespace from override", () => {
+    expect(resolveApiBase({ CLINE_API_BASE: "  https://api.cline.bot  " })).toBe(
+      "https://api.cline.bot",
+    );
+  });
+
+  it("falls back to default when CLINE_API_BASE is empty string", () => {
+    expect(resolveApiBase({ CLINE_API_BASE: "" })).toBe(DEFAULT_API_BASE);
+  });
+
+  it("falls back to default when CLINE_API_BASE is whitespace-only", () => {
+    expect(resolveApiBase({ CLINE_API_BASE: "   " })).toBe(DEFAULT_API_BASE);
+  });
+
+  it("trims + removes trailing slashes from override", () => {
+    expect(resolveApiBase({ CLINE_API_BASE: "  https://api.cline.bot/  " })).toBe(
+      "https://api.cline.bot",
+    );
+  });
 });
 
 // ─── sanitizeApiKey ─────────────────────────────────────────────────────────

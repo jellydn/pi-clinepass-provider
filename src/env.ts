@@ -16,9 +16,13 @@ export const PROVIDER_NAME = "clinepass";
 
 /**
  * Resolve the API base URL, allowing override via CLINE_API_BASE env var.
+ * Normalizes the result: trims whitespace, treats empty value as missing,
+ * and removes trailing slashes to prevent malformed endpoint concatenation.
  */
 export function resolveApiBase(env: Record<string, string | undefined> = process.env): string {
-  return env.CLINE_API_BASE ?? DEFAULT_API_BASE;
+  const base = env.CLINE_API_BASE?.trim();
+  if (!base) return DEFAULT_API_BASE;
+  return base.replace(/\/+$/, "");
 }
 
 /**
@@ -26,28 +30,15 @@ export function resolveApiBase(env: Record<string, string | undefined> = process
  */
 export function sanitizeApiKey(input: string): string {
   const esc = String.fromCharCode(27);
-  return Array.from(
-    input
-      .replaceAll(`${esc}[200~`, "")
-      .replaceAll(`${esc}[201~`, "")
-      .replaceAll("[200~", "")
-      .replaceAll("[201~", ""),
-  )
-    .filter((char) => {
-      const code = char.charCodeAt(0);
-      return code > 31 && code !== 127;
-    })
-    .join("")
+  return input
+    .replaceAll(`${esc}[200~`, "")
+    .replaceAll(`${esc}[201~`, "")
+    .replaceAll("[200~", "")
+    .replaceAll("[201~", "")
+    .replace(/[\x00-\x1f\x7f]/g, "")
     .trim();
 }
 
-/**
- * Build the full chat completions endpoint URL from a base URL.
- *
- * Utility for documentation and tests — the actual extension uses pi's
- * built-in openai-completions streaming, which appends `/chat/completions`
- * to the provider's baseUrl (`${apiBase}/api/v1`) automatically.
- */
 export function buildEndpointUrl(base: string): string {
   return `${base}${DEFAULT_ENDPOINT}`;
 }

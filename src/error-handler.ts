@@ -39,6 +39,9 @@ export function handleClinePassError(
     model?: { provider?: string };
   },
 ): void {
+  // Guard against missing or null event.message
+  if (!event.message) return;
+
   // The message object carries stopReason and errorMessage from the stream.
   // Access defensively since AgentMessage may not export these fields in
   // its public type definition.

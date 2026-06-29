@@ -152,6 +152,12 @@ interface RawModelEntry {
   reasoning?: unknown;
 }
 
+/** Convert a per-token price from the API to our $/M tokens representation. */
+function toMicroPerToken(val: unknown, fallbackVal: number): number {
+  const n = numberValue(val);
+  return n != null ? n * 1_000_000 : fallbackVal;
+}
+
 /**
  * Parse a single raw model entry into a `ModelConfig`.
  * Falls back to static-model values when the API doesn't provide a field.
@@ -160,7 +166,7 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
   const id = stringValue(raw.id);
   if (!id) return undefined;
 
-  const name = stringValue(raw.name) ?? id;
+  const name = stringValue(raw.name) ?? fallback?.name ?? id;
   const contextWindow = numberValue(raw.context_length) ?? fallback?.contextWindow ?? 128_000;
   const maxTokens = numberValue(raw.max_output_tokens) ?? fallback?.maxTokens ?? 8_192;
   const reasoning = booleanValue(raw.reasoning) ?? fallback?.reasoning ?? true;
@@ -168,18 +174,9 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
   // Parse pricing — OpenAI format uses string $/token; we use $/M tokens
   const pricing = isRecord(raw.pricing) ? raw.pricing : undefined;
   const cost = {
-    input:
-      numberValue(pricing?.prompt) != null
-        ? numberValue(pricing?.prompt)! * 1_000_000
-        : (fallback?.cost.input ?? 0),
-    output:
-      numberValue(pricing?.completion) != null
-        ? numberValue(pricing?.completion)! * 1_000_000
-        : (fallback?.cost.output ?? 0),
-    cacheRead:
-      numberValue(pricing?.cached_input) != null
-        ? numberValue(pricing?.cached_input)! * 1_000_000
-        : (fallback?.cost.cacheRead ?? 0),
+    input: toMicroPerToken(pricing?.prompt, fallback?.cost.input ?? 0),
+    output: toMicroPerToken(pricing?.completion, fallback?.cost.output ?? 0),
+    cacheRead: toMicroPerToken(pricing?.cached_input, fallback?.cost.cacheRead ?? 0),
     cacheWrite: fallback?.cost.cacheWrite ?? 0,
   };
 
@@ -240,13 +237,13 @@ export async function fetchRemoteModels(
     // Build a lookup from the static MODELS for fallback values
     const staticById = new Map(MODELS.map((m) => [m.id, m]));
 
-    const parsed = rawList
-      .filter((raw) => {
-        const id = stringValue(raw?.id);
-        return id?.startsWith("cline-pass/");
-      })
-      .map((raw) => parseRemoteModel(raw, staticById.get(stringValue(raw.id)!)))
-      .filter((m): m is ModelConfig => m !== undefined);
+    const parsed = rawList.reduce<ModelConfig[]>((acc, raw) => {
+      const id = stringValue(raw?.id);
+      if (!id?.startsWith("cline-pass/")) return acc;
+      const model = parseRemoteModel(raw, staticById.get(id));
+      if (model) acc.push(model);
+      return acc;
+    }, []);
 
     return parsed.length > 0 ? parsed : undefined;
   } catch {
