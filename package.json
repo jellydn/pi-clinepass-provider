@@ -55,7 +55,7 @@
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.80.2",
     "@earendil-works/pi-coding-agent": "^0.80.2",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.0.0",
     "bumpp": "^11.1.0",
     "np": "^11.2.1",
     "oxfmt": "^0.56.0",
