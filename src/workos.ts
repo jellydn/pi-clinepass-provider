@@ -29,6 +29,9 @@ export const WORKOS_TOKEN_LIFETIME_MS = 55 * 60 * 1000;
 /** Refresh tokens 5 minutes before expiry to avoid race conditions. */
 export const WORKOS_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 
+/** Timeout for the refresh HTTP request (15 seconds). */
+export const WORKOS_REFRESH_TIMEOUT_MS = 15_000;
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 /**
@@ -95,14 +98,26 @@ export async function refreshWorkosToken(
 ): Promise<OAuthCredentials> {
   const fetchFn = options.fetch ?? globalThis.fetch;
   const apiBase = options.apiBase ?? resolveApiBase();
-  const response = await fetchFn(`${apiBase}${CLINE_REFRESH_ENDPOINT}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      granttype: "refresh_token",
-      refreshToken: credentials.refresh,
-    }),
-  });
+
+  let response;
+  try {
+    response = await fetchFn(`${apiBase}${CLINE_REFRESH_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        granttype: "refresh_token",
+        refreshToken: credentials.refresh,
+      }),
+      signal: AbortSignal.timeout(WORKOS_REFRESH_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(
+        "ClinePass token refresh timed out — check your network or try a static API key.",
+      );
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => "unknown error");
@@ -181,7 +196,7 @@ export function resolveClineAuthCredentials(
         if (!accessToken || !refreshToken) continue;
 
         const expiresAt =
-          typeof auth.expiresAt === "number"
+          typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt)
             ? auth.expiresAt
             : Date.now() + WORKOS_TOKEN_LIFETIME_MS;
 

@@ -7,12 +7,12 @@
 | Test runner | Vitest 4.x                                                                 |
 | Config      | `vitest.config.ts` → includes `tests/**/*.test.ts`                         |
 | Run command | `npm test` (or `npm run test:watch` for watch mode)                        |
-| Test count  | 96 unit tests across 8 files                                               |
+| Test count  | 124 unit tests across 9 files                                              |
 | E2E         | `tests/e2e/smoke.sh` (manual trigger, requires `CLINE_API_KEY` + `pi` CLI) |
 
 ## Test Structure
 
-```
+```text
 tests/
 ├── unit/
 │   ├── env.test.ts           # 14 tests — constants, resolveApiBase, sanitizeApiKey, buildEndpointUrl
@@ -21,7 +21,8 @@ tests/
 │   ├── workos.test.ts        # 20 tests — isWorkosToken, constants, resolveClineAuthCredentials, refreshWorkosToken
 │   ├── errors.test.ts        # 14 tests — classifyClinePassError (all matchers)
 │   ├── error-handler.test.ts # 8 tests — handleClinePassError (called directly, no bootstrap)
-│   ├── oauth.test.ts         # 4 tests — refreshToken dispatch, getApiKey (protocol tests moved to workos)
+│   ├── oauth.test.ts         # 13 tests — login (WorkOS auto + manual paste), refreshToken dispatch, getApiKey
+│   ├── utils.test.ts         # 19 tests — isRecord, stringValue, numberValue, booleanValue (all edge cases)
 │   └── index.test.ts         # 4 tests — provider registration, message_end listener registration
 └── e2e/
     └── smoke.sh              # API auth check, model smoke tests, error handling
@@ -141,12 +142,13 @@ await mod.default(fakePi as never);
 
 Tests call `handleClinePassError(event, ctx)` directly — no extension bootstrap, no fetch mocking, no `makeFakePi` helper needed.
 
-### `src/oauth.ts` (4 tests)
+### `src/oauth.ts` (13 tests)
 
-| Function       | Tests | Coverage                                           |
-| -------------- | ----- | -------------------------------------------------- |
-| `refreshToken` | 2     | Static key no-op (no fetch), WorkOS triggers fetch |
-| `getApiKey`    | 2     | WorkOS token, static key                           |
+| Function       | Tests | Coverage                                                                              |
+| -------------- | ----- | ------------------------------------------------------------------------------------- |
+| `login`        | 9     | WorkOS auto-login (valid/expired/margin), manual paste (dashboard, empty, trim, warn) |
+| `refreshToken` | 2     | Static key no-op (no fetch), WorkOS triggers fetch                                   |
+| `getApiKey`    | 2     | WorkOS token, static key                                                              |
 
 Detailed protocol tests (endpoint URL, body format, prefix handling, error cases) live in `workos.test.ts` testing `refreshWorkosToken` directly.
 

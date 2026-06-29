@@ -41,7 +41,7 @@ A new `src/error-handler.ts` module was created, owning the full error surface p
 - **Classify** — delegates to `classifyClinePassError` from `errors.ts`.
 - **Deliver** — calls `ctx.ui.notify(friendlyMessage, "error")` when `ctx.hasUI`, else `console.error`.
 
-The interface is a single function: `handleClinePassError(event: { message: unknown }, ctx: ...): void`. `src/index.ts` is now a one-liner: `pi.on("message_end", handleClinePassError)`.
+The interface is a single function: `handleClinePassError(event: { message: unknown }, ctx: ...): void`. `src/index.ts` now delegates via a single call site: `pi.on("message_end", handleClinePassError)`.
 
 The handler tests were moved from `index.test.ts` to `error-handler.test.ts`, calling `handleClinePassError` directly with raw `(event, ctx)` arguments — no fetch mocking, no extension bootstrap, no `makeFakePi` helper needed.
 

@@ -6,7 +6,7 @@
 
 ## Module Dependency Graph
 
-```
+```text
 src/index.ts  (Extension entry point — thin orchestration)
   ├── src/error-handler.ts  (Error surface pipeline)
   │     └── src/errors.ts   (Pure error classification)
@@ -21,7 +21,7 @@ src/index.ts  (Extension entry point — thin orchestration)
 src/utils.ts  (Shared type guards — leaf dependency, imported by env, models, auth, workos)
 ```
 
-```
+```text
 tests/unit/
   ├── env.test.ts          (14 tests)
   ├── models.test.ts       (15 tests)
@@ -77,7 +77,7 @@ tests/unit/
 
 ### Registration Flow (startup)
 
-```
+```text
 1. pi loads src/index.ts via await import()
 2. resolveApiBase() from env.ts → determines API endpoint
 3. resolveApiKey() from auth.ts → finds API key (env → Cline CLI config → pi auth.json)
@@ -95,7 +95,7 @@ tests/unit/
 4. On error: message_end event fires with stopReason="error" + errorMessage
 5. handleClinePassError(event, ctx) from error-handler.ts:
    a. Filter: type-assert message, check stopReason + provider, early return if not clinepass
-   b. Classify: categorizeClinePassError from errors.ts
+   b. Classify: classifyClinePassError from errors.ts
    c. Deliver: ctx.ui.notify(friendlyMessage, "error") or console.error fallback
 ```
 
