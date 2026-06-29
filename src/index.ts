@@ -19,7 +19,13 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { resolveApiBase, MODELS, PROVIDER_NAME, ENV_API_KEY } from "./logic.js";
+import {
+  resolveApiBase,
+  resolveApiKey,
+  resolveModels,
+  PROVIDER_NAME,
+  ENV_API_KEY,
+} from "./logic.js";
 import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
 // Note on compat/thinkingFormat: ClinePass exposes a standard OpenAI-compatible
@@ -32,8 +38,14 @@ import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
 // ─── Extension Entry Point ─────────────────────────────────────────────────
 
-export default function (pi: ExtensionAPI) {
+export default async function (pi: ExtensionAPI) {
   const apiBase = resolveApiBase();
+
+  // Attempt dynamic model discovery from the Cline API. Falls back to the
+  // static MODELS array on any error (network failure, 404, parse error).
+  // The fetch has a 5-second timeout so startup is never blocked for long.
+  const apiKey = resolveApiKey();
+  const models = await resolveModels(apiKey, { apiBase });
 
   pi.registerProvider(PROVIDER_NAME, {
     name: "ClinePass",
@@ -54,7 +66,7 @@ export default function (pi: ExtensionAPI) {
     // Spread the model object so all fields (including future ones like
     // `compat` / `thinkingFormat`) propagate to pi automatically. Only
     // `input` needs transformation: readonly tuple → mutable array.
-    models: MODELS.map((model) => ({
+    models: models.map((model) => ({
       ...model,
       input: [...model.input],
     })),

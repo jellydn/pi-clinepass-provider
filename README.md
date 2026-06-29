@@ -21,7 +21,7 @@ ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom 
 - Per-token cost tracking against ClinePass reference pricing
 - **WorkOS OAuth token refresh** — reuses your existing Cline CLI login (`cline auth`); no separate API key needed
 - API key auto-discovery from `CLINE_API_KEY` env var, `~/.cline/data/settings/providers.json`, or `~/.pi/agent/auth.json`
-- 10 curated open-weight coding models with tool call support
+- **Dynamic model discovery** — fetches the live model list from the Cline API at startup, falling back to a curated static list on error
 - `/login` integration — automatic WorkOS OAuth detection or browser-assisted manual paste
 
 ## Supported Models

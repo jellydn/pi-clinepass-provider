@@ -1,12 +1,24 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { DEFAULT_API_BASE, ENV_API_KEY, PROVIDER_NAME, MODELS } from "../../src/logic.js";
 
 /**
  * Verifies the provider registration shape passed to pi.registerProvider.
  * Uses a fake ExtensionAPI that captures the call args so we can assert
- * baseUrl, apiKey sigil, api type, oauth wiring, and model forwarding.
+ * baseUrl, apiKey sigil, api type, model forwarding, and oauth wiring.
+ *
+ * The default export is now async (dynamic model discovery), so all tests
+ * await the call. fetch is stubbed to return a 404 so the static MODELS
+ * fallback is used deterministically.
  */
 describe("provider registration", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Not Found", { status: 404 })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("registers with correct baseUrl, apiKey, and api type", async () => {
     let captured: { name: string; config: Record<string, unknown> } | undefined;
 
@@ -17,7 +29,7 @@ describe("provider registration", () => {
     };
 
     const mod = await import("../../src/index.js");
-    mod.default(fakePi as never);
+    await mod.default(fakePi as never);
 
     expect(captured).toBeDefined();
     expect(captured!.name).toBe(PROVIDER_NAME);
@@ -27,7 +39,7 @@ describe("provider registration", () => {
     expect(captured!.config.authHeader).toBe(true);
   });
 
-  it("registers all models with correct fields", async () => {
+  it("registers all static models as fallback when API is unavailable", async () => {
     let captured: { config: Record<string, unknown> } | undefined;
 
     const fakePi = {
@@ -37,9 +49,10 @@ describe("provider registration", () => {
     };
 
     const mod = await import("../../src/index.js");
-    mod.default(fakePi as never);
+    await mod.default(fakePi as never);
 
     const models = captured!.config.models as Array<Record<string, unknown>>;
+    // Falls back to static MODELS since fetch returns 404
     expect(models).toHaveLength(MODELS.length);
 
     for (let i = 0; i < MODELS.length; i++) {
@@ -49,7 +62,6 @@ describe("provider registration", () => {
       expect(models[i].cost).toEqual(MODELS[i].cost);
       expect(models[i].contextWindow).toBe(MODELS[i].contextWindow);
       expect(models[i].maxTokens).toBe(MODELS[i].maxTokens);
-      // input should be a mutable array copy, not the readonly tuple
       expect(models[i].input).toEqual([...MODELS[i].input]);
       expect(Array.isArray(models[i].input)).toBe(true);
     }
@@ -65,7 +77,7 @@ describe("provider registration", () => {
     };
 
     const mod = await import("../../src/index.js");
-    mod.default(fakePi as never);
+    await mod.default(fakePi as never);
 
     const oauth = captured!.config.oauth as Record<string, unknown>;
     expect(oauth.name).toBe("ClinePass");

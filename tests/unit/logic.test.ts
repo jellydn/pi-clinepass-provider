@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   resolveApiKey,
   defaultAuthPaths,
@@ -15,6 +15,8 @@ import {
   isWorkosToken,
   WORKOS_TOKEN_PREFIX,
   CLINE_REFRESH_ENDPOINT,
+  fetchRemoteModels,
+  resolveModels,
 } from "../../src/logic.js";
 
 // ─── resolveApiKey ──────────────────────────────────────────────────────────
@@ -471,6 +473,177 @@ describe("WorkOS constants", () => {
 
   it("exports the Cline refresh endpoint path", () => {
     expect(CLINE_REFRESH_ENDPOINT).toBe("/api/v1/auth/refresh");
+  });
+});
+
+// ─── fetchRemoteModels ─────────────────────────────────────────────────────
+
+describe("fetchRemoteModels", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns undefined when no API key is provided", async () => {
+    const result = await fetchRemoteModels({ apiKey: undefined });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined on non-OK response (e.g. 404)", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response("Not Found", { status: 404 }),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined on network error", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("network error"));
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toBeUndefined();
+  });
+
+  it("parses OpenAI-compatible { data: [...] } response", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "cline-pass/glm-5.2",
+              name: "GLM-5.2",
+              context_length: 200_000,
+              max_output_tokens: 131_072,
+              pricing: { prompt: "0.0000014", completion: "0.0000044", cached_input: "0.00000026" },
+              reasoning: true,
+            },
+            {
+              id: "cline-pass/deepseek-v4-flash",
+              name: "DeepSeek V4 Flash",
+              context_length: 1_000_000,
+              max_output_tokens: 384_000,
+              reasoning: true,
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(2);
+    expect(result![0].id).toBe("cline-pass/glm-5.2");
+    expect(result![0].name).toBe("GLM-5.2");
+    expect(result![0].contextWindow).toBe(200_000);
+    expect(result![0].maxTokens).toBe(131_072);
+    expect(result![0].reasoning).toBe(true);
+    // Pricing converted from $/token to $/M tokens
+    expect(result![0].cost.input).toBeCloseTo(1.4, 1);
+    expect(result![0].cost.output).toBeCloseTo(4.4, 1);
+  });
+
+  it("parses bare array response format", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(JSON.stringify([{ id: "cline-pass/kimi-k2.7-code", name: "Kimi K2.7 Code" }]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(1);
+    expect(result![0].id).toBe("cline-pass/kimi-k2.7-code");
+  });
+
+  it("filters out non-cline-pass models", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "cline-pass/glm-5.2", name: "GLM-5.2" },
+            { id: "openai/gpt-5", name: "GPT-5" },
+            { id: "anthropic/claude-4", name: "Claude 4" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(1);
+    expect(result![0].id).toBe("cline-pass/glm-5.2");
+  });
+
+  it("uses static model fallback values for missing fields", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: "cline-pass/glm-5.2" }], // only id, no other fields
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(1);
+    // Falls back to static MODELS values
+    const staticModel = MODELS.find((m) => m.id === "cline-pass/glm-5.2");
+    expect(result![0].contextWindow).toBe(staticModel!.contextWindow);
+    expect(result![0].maxTokens).toBe(staticModel!.maxTokens);
+    expect(result![0].cost.input).toBe(staticModel!.cost.input);
+  });
+
+  it("returns undefined for empty model list", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toBeUndefined();
+  });
+});
+
+// ─── resolveModels ─────────────────────────────────────────────────────────
+
+describe("resolveModels", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to static MODELS when no API key", async () => {
+    const result = await resolveModels(undefined);
+    expect(result).toEqual(MODELS);
+  });
+
+  it("falls back to static MODELS when fetch fails", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response("Not Found", { status: 404 }),
+    );
+    const result = await resolveModels("test_key");
+    expect(result).toEqual(MODELS);
+  });
+
+  it("returns remote models when fetch succeeds", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "cline-pass/glm-5.2", name: "GLM-5.2 Updated" },
+            { id: "cline-pass/new-model", name: "New Model" },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await resolveModels("test_key");
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe("cline-pass/glm-5.2");
+    expect(result[0].name).toBe("GLM-5.2 Updated");
+    expect(result[1].id).toBe("cline-pass/new-model");
   });
 });
 
