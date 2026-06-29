@@ -663,6 +663,16 @@ describe("classifyClinePassError", () => {
     expect(result.type).toBe("not_subscribed");
   });
 
+  it("classifies 'subscription required' as not_subscribed", () => {
+    const result = classifyClinePassError("Subscription required to use ClinePass");
+    expect(result.type).toBe("not_subscribed");
+  });
+
+  it("classifies 'not subscribed' as not_subscribed", () => {
+    const result = classifyClinePassError("User is not subscribed to ClinePass");
+    expect(result.type).toBe("not_subscribed");
+  });
+
   it("classifies 401 as auth_expired", () => {
     const result = classifyClinePassError("Request failed with status 401");
     expect(result.type).toBe("auth_expired");
