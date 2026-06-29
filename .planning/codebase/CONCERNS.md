@@ -6,18 +6,6 @@ The codebase is in excellent health after a series of refactors (provider traver
 
 ---
 
-## Tooling Constraints
-
-### 1. `sanitizeApiKey` blocked from regex by `no-control-regex` lint rule
-
-**File**: `src/env.ts:25-34`  
-**Issue**: The control character filter uses `.split("").filter().join("")` rather than a regex `.replace()`. A single `.replace(/[\x00-\x1f\x7f]/g, "")` would be more idiomatic and avoid creating intermediate arrays.  
-**Attempted**: Regex literal (`/[\x00-\x1f\x7f]/g`), Unicode escapes (`/[\u0000-\u001f\u007f]/g`), and `new RegExp()` constructor — all three are flagged by oxlint's `no-control-regex` rule. oxlint does not currently support per-line suppression for this rule.  
-**Current implementation**: `.split("").filter().join("")` — functionally identical but creates temporary arrays for a typically 30-50 char input. Negligible real-world performance impact.  
-**When to revisit**: If oxlint adds a per-line disable mechanism for `no-control-regex`, or if the project switches to a linter that supports it (ESLint's `eslint-disable-next-line` works).
-
----
-
 ## Coverage Gaps
 
 ### 2. No integration-level test coverage in CI
@@ -42,10 +30,9 @@ The codebase is in excellent health after a series of refactors (provider traver
 **Issue**: The `compat` / `thinkingFormat` override mechanism is documented but no model currently uses it — all models rely on pi's default `openai-completions` handling for reasoning.  
 **Forward plan**: Monitor user feedback on reasoning quality for individual models. Add `compat` overrides only if specific models show issues through the live API.
 
-### 4. No TypeScript type-level tests for pi SDK interface
+### 4. ~~No TypeScript type-level tests for pi SDK interface~~
 
-**Issue**: The extension implements pi's `ExtensionAPI` contract but has no explicit type-level assertion (e.g., `satisfies ExtensionAPI`) verifying the registration shape.  
-**Mitigation**: `tsc --noEmit` catches type mismatches at compile time — if pi changes the `ExtensionAPI` contract, our code would fail to compile. `skipLibCheck: true` only skips checking the SDK's internal `.d.ts` types, not our usage of them.
+**Resolved** — `tests/type/contract.ts` added: a compile-time type assertion that our default export conforms to pi's `(api: ExtensionAPI) => Promise<void>` contract. Named without `.test` suffix so vitest skips it; `tsconfig.json`'s `include: ["tests/**/*.ts"]` picks it up for type-checking.
 
 ---
 
