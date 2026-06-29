@@ -28,7 +28,7 @@ Priority order:
 5. ~/.pi/agent/auth.json → clinepass field (string or {access: "..."})
 ```
 
-WorkOS OAuth tokens (prefixed `workos:`) are **not** used as static keys — they're handled via the OAuth refresh flow in `src/oauth.ts`.
+WorkOS OAuth tokens (prefixed `workos:`) are **not** used as static keys — they're handled via the OAuth refresh flow in `src/oauth.ts`. The HTTP protocol (endpoint, body format, prefix enforcement) lives in `src/workos.ts`; `src/oauth.ts` is pure orchestration (login flow + dispatch).
 
 ## Cline CLI (Credential Reuse)
 
@@ -54,12 +54,14 @@ The extension reads both `cline-pass` and `cline` provider entries from the Clin
 ### WorkOS Token Refresh Flow
 
 ```
-1. Detect WorkOS credentials from Cline CLI config
+1. Detect WorkOS credentials from Cline CLI config (workos.ts: resolveClineAuthCredentials)
 2. Check if accessToken is expired (expiresAt <= now + 5min margin)
-3. If expired: POST /api/v1/auth/refresh → get new accessToken + refreshToken
-4. Ensure "workos:" prefix on new accessToken
+3. If expired: POST /api/v1/auth/refresh → get new accessToken + refreshToken (workos.ts: refreshWorkosToken)
+4. Ensure "workos:" prefix on new accessToken (workos.ts)
 5. Return OAuthCredentials to pi for persistence
 ```
+
+The HTTP refresh protocol (endpoint URL, `{granttype, refreshToken}` body format, response parsing, prefix enforcement) is encapsulated in `src/workos.ts`. The `oauth.ts` module imports `refreshWorkosToken` and calls it — it has no knowledge of the refresh protocol details.
 
 ## pi Extension API
 

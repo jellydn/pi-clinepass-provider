@@ -7,7 +7,7 @@
 | Test runner | Vitest 4.x                                                                 |
 | Config      | `vitest.config.ts` → includes `tests/**/*.test.ts`                         |
 | Run command | `npm test` (or `npm run test:watch` for watch mode)                        |
-| Test count  | 93 unit tests across 3 files                                               |
+| Test count  | 96 unit tests across 8 files                                               |
 | E2E         | `tests/e2e/smoke.sh` (manual trigger, requires `CLINE_API_KEY` + `pi` CLI) |
 
 ## Test Structure
@@ -15,11 +15,16 @@
 ```
 tests/
 ├── unit/
-│   ├── logic.test.ts    # 50+ tests — resolveApiKey, resolveClineAuthCredentials, fetchRemoteModels, resolveModels, classifyClinePassError, sanitizeApiKey, isWorkosToken, constants
-│   ├── oauth.test.ts    # 7 tests — refreshToken dispatch, WorkOS refresh, getApiKey
-│   └── index.test.ts    # 12 tests — provider registration, model forwarding, oauth wiring, message_end error handler
+│   ├── env.test.ts           # 14 tests — constants, resolveApiBase, sanitizeApiKey, buildEndpointUrl
+│   ├── models.test.ts        # 15 tests — modelIds, MODELS, fetchRemoteModels, resolveModels
+│   ├── auth.test.ts          # 15 tests — resolveApiKey, defaultAuthPaths
+│   ├── workos.test.ts        # 20 tests — isWorkosToken, constants, resolveClineAuthCredentials, refreshWorkosToken
+│   ├── errors.test.ts        # 14 tests — classifyClinePassError (all matchers)
+│   ├── error-handler.test.ts # 8 tests — handleClinePassError (called directly, no bootstrap)
+│   ├── oauth.test.ts         # 4 tests — refreshToken dispatch, getApiKey (protocol tests moved to workos)
+│   └── index.test.ts         # 4 tests — provider registration, message_end listener registration
 └── e2e/
-    └── smoke.sh         # API auth check, model smoke tests, error handling
+    └── smoke.sh              # API auth check, model smoke tests, error handling
 ```
 
 ## Mocking Strategy
@@ -35,9 +40,23 @@ const fileExists = () => true;
 expect(resolveApiKey(undefined, { readFile, fileExists })).toBe("test_key");
 ```
 
-### Global fetch stubbing
+### Injected fetch (for models.ts and workos.ts)
 
-For `fetchRemoteModels` and OAuth refresh tests:
+Functions accept injectable `fetch` via options — no global stubbing needed:
+
+```typescript
+// models.test.ts — inject fetch directly
+const mockFetch = mockFetchOK({ data: [{ id: "cline-pass/glm-5.2", name: "GLM-5.2" }] });
+const result = await fetchRemoteModels({ apiKey: "test_key", fetch: mockFetch });
+
+// workos.test.ts — inject fetch directly
+const mockFetch = mockFetchOK({ data: { accessToken: "eyJnew_jwt", refreshToken: "new_rt" } });
+const result = await refreshWorkosToken(cred, { fetch: mockFetch });
+```
+
+### Global fetch stubbing (legacy, for index.test.ts and oauth.test.ts)
+
+Only used where the function doesn't accept injectable fetch (extension bootstrap, dispatch layer):
 
 ```typescript
 beforeEach(() => {
@@ -73,40 +92,72 @@ const fakePi = {
 await mod.default(fakePi as never);
 ```
 
-A shared `makeFakePi()` helper captures the `message_end` handler for error handler tests.
-
 ## Test Coverage by Module
 
-### `src/logic.ts` (50+ tests)
+### `src/env.ts` (14 tests)
 
-| Function                      | Tests | Coverage                                                                                                                                                                 |
-| ----------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `resolveApiKey`               | 17    | Priority order, env vars, auth files, Cline CLI nested format, WorkOS exclusion, malformed JSON, missing files                                                           |
-| `resolveClineAuthCredentials` | 9     | cline-pass/cline providers, preference order, missing fields, malformed JSON, default expiresAt                                                                          |
-| `fetchRemoteModels`           | 8     | No key, 404, network error, OpenAI format, bare array, non-cline-pass filtering, static fallback, empty list                                                             |
-| `resolveModels`               | 3     | No key fallback, fetch fail fallback, remote success                                                                                                                     |
-| `classifyClinePassError`      | 14    | 403, forbidden, subscription required, not subscribed, 401, unauthorized, invalid api key, 429, rate limit, too many requests, unknown, case-insensitivity, empty string |
-| `sanitizeApiKey`              | 6     | Trim, paste wrappers, control chars, DEL, combined, whitespace-only                                                                                                      |
-| `isWorkosToken`               | 4     | workos: prefix, static key, empty string, bare JWT                                                                                                                       |
-| Constants                     | 4     | PROVIDER_NAME, ENV_API_KEY, DEFAULT_API_BASE, DEFAULT_ENDPOINT                                                                                                           |
-| `resolveApiBase`              | 2     | Default, env override                                                                                                                                                    |
-| `buildEndpointUrl`            | 2     | Default base, custom base                                                                                                                                                |
-| `modelIds` / `MODELS`         | 3     | IDs, prefix check, field validation                                                                                                                                      |
+| Function           | Tests | Coverage                                                            |
+| ------------------ | ----- | ------------------------------------------------------------------- |
+| Constants          | 4     | PROVIDER_NAME, ENV_API_KEY, DEFAULT_API_BASE, DEFAULT_ENDPOINT      |
+| `resolveApiBase`   | 2     | Default, env override                                               |
+| `sanitizeApiKey`   | 6     | Trim, paste wrappers, control chars, DEL, combined, whitespace-only |
+| `buildEndpointUrl` | 2     | Default base, custom base                                           |
 
-### `src/oauth.ts` (7 tests)
+### `src/models.ts` (15 tests)
 
-| Function       | Tests                                                            | Coverage                                                                                        |
-| -------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `refreshToken` | 5                                                                | Static key no-op, WorkOS fetch, workos: prefix preservation, non-OK error, missing tokens error |
-| `getApiKey`    | 1                                                                | Returns access token                                                                            |
-| `login`        | (indirectly tested via refreshToken/resolveClineAuthCredentials) |                                                                                                 |
+| Function              | Tests | Coverage                                                                                                     |
+| --------------------- | ----- | ------------------------------------------------------------------------------------------------------------ |
+| `modelIds` / `MODELS` | 4     | IDs, prefix check, field validation, at least 1 model                                                        |
+| `fetchRemoteModels`   | 8     | No key, 404, network error, OpenAI format, bare array, non-cline-pass filtering, static fallback, empty list |
+| `resolveModels`       | 3     | No key fallback, fetch fail fallback, remote success                                                         |
 
-### `src/index.ts` (12 tests)
+### `src/auth.ts` (15 tests)
 
-| Area                  | Tests | Coverage                                                                                                                 |
-| --------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------ |
-| Provider registration | 3     | baseUrl, apiKey, api type, authHeader; static model fallback; oauth wiring                                               |
-| message_end handler   | 9     | Registration, 403, 401, 429, unknown, provider fallback, other-provider ignore, non-error ignore, console.error fallback |
+| Function           | Tests | Coverage                                                                                                                   |
+| ------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------- |
+| `resolveApiKey`    | 14    | Priority order, env vars, auth files, Cline CLI nested format, WorkOS exclusion, malformed JSON, missing files, path order |
+| `defaultAuthPaths` | 1     | Includes both Cline CLI and pi auth paths                                                                                  |
+
+### `src/workos.ts` (20 tests)
+
+| Function                      | Tests | Coverage                                                                                                      |
+| ----------------------------- | ----- | ------------------------------------------------------------------------------------------------------------- |
+| `isWorkosToken`               | 4     | workos: prefix, static key, empty string, bare JWT                                                            |
+| Constants                     | 3     | WORKOS_TOKEN_PREFIX, CLINE_REFRESH_ENDPOINT, WORKOS_TOKEN_LIFETIME_MS                                         |
+| `resolveClineAuthCredentials` | 8     | cline-pass/cline providers, preference order, missing fields, malformed JSON, default expiresAt, missing file |
+| `refreshWorkosToken`          | 5     | Endpoint URL + body format, bare JWT prefix, existing prefix preservation, non-OK error, missing tokens error |
+
+### `src/errors.ts` (14 tests)
+
+| Function                 | Tests | Coverage                                                                                                                                                                 |
+| ------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `classifyClinePassError` | 14    | 403, forbidden, subscription required, not subscribed, 401, unauthorized, invalid api key, 429, rate limit, too many requests, unknown, case-insensitivity, empty string |
+
+### `src/error-handler.ts` (8 tests)
+
+| Function               | Tests | Coverage                                                                                                               |
+| ---------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------- |
+| `handleClinePassError` | 8     | 403, 401, 429, unknown, provider fallback (ctx.model), other-provider ignore, non-error ignore, console.error fallback |
+
+Tests call `handleClinePassError(event, ctx)` directly — no extension bootstrap, no fetch mocking, no `makeFakePi` helper needed.
+
+### `src/oauth.ts` (4 tests)
+
+| Function       | Tests | Coverage                                           |
+| -------------- | ----- | -------------------------------------------------- |
+| `refreshToken` | 2     | Static key no-op (no fetch), WorkOS triggers fetch |
+| `getApiKey`    | 2     | WorkOS token, static key                           |
+
+Detailed protocol tests (endpoint URL, body format, prefix handling, error cases) live in `workos.test.ts` testing `refreshWorkosToken` directly.
+
+### `src/index.ts` (4 tests)
+
+| Area                  | Tests | Coverage                                                            |
+| --------------------- | ----- | ------------------------------------------------------------------- |
+| Provider registration | 3     | baseUrl, apiKey, api type, authHeader; model fallback; oauth wiring |
+| Listener registration | 1     | Registers `message_end` listener                                    |
+
+Error handler behavior is tested in `error-handler.test.ts` — `index.test.ts` only verifies the listener is registered.
 
 ## E2E Smoke Tests
 
@@ -127,11 +178,12 @@ A shared `makeFakePi()` helper captures the `message_end` handler for error hand
 
 ## CI Test Matrix
 
-The CI workflow runs tests against two pi versions:
+The CI workflow runs tests against three variants:
 
-| Matrix variant  | Pi version                                   | Steps                                   |
-| --------------- | -------------------------------------------- | --------------------------------------- |
-| `latest`        | From lockfile (`npm ci`)                     | lint + typecheck + format:check + tests |
-| `min-pi-0.80.2` | Pinned to 0.80.2 via `npm install --no-save` | typecheck + tests only                  |
+| Matrix variant            | Pi version                                   | Node | Steps                                   |
+| ------------------------- | -------------------------------------------- | ---- | --------------------------------------- |
+| `latest / Node 22`        | From lockfile (`npm ci`)                     | 22   | lint + typecheck + format:check + tests |
+| `min-pi-0.80.2 / Node 22` | Pinned to 0.80.2 via `npm install --no-save` | 22   | typecheck + tests only                  |
+| `latest / Node 24`        | From lockfile (`npm ci`)                     | 24   | typecheck + tests only                  |
 
-`fail-fast: false` ensures both variants complete even if one fails.
+E2E smoke tests also run against Node 22 and Node 24 via matrix strategy (manual trigger). `fail-fast: false` ensures all variants complete.
