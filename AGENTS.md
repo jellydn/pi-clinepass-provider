@@ -6,15 +6,20 @@ pi extension that registers ClinePass as a model provider via pi's built-in `ope
 
 ## Commands
 
-| Command                | What it does                                       |
-| ---------------------- | -------------------------------------------------- |
-| `npm test`             | Unit tests via Vitest                              |
-| `npm run test:watch`   | Watch mode                                         |
-| `npm run test:e2e`     | E2E smoke tests (requires `CLINE_API_KEY` + `pi`)  |
-| `npm run lint`         | Lint all source/test files with oxlint             |
-| `npm run format`       | Format all source/test files with oxfmt (in-place) |
-| `npm run format:check` | Check formatting without writing                   |
-| `npm run typecheck`    | TypeScript type checking (no emit via tsconfig)    |
+| Command                 | What it does                                       |
+| ----------------------- | -------------------------------------------------- |
+| `npm test`              | Unit tests via Vitest                              |
+| `npm run test:watch`    | Watch mode                                         |
+| `npm run test:e2e`      | E2E smoke tests (requires `CLINE_API_KEY` + `pi`)  |
+| `npm run lint`          | Lint all source/test files with oxlint             |
+| `npm run format`        | Format all source/test files with oxfmt (in-place) |
+| `npm run format:check`  | Check formatting without writing                   |
+| `npm run typecheck`     | TypeScript type checking (no emit via tsconfig)    |
+| `npm run release`       | Bump version (prompt), commit, tag, push           |
+| `npm run release:patch` | Bump patch version, commit, tag, push              |
+| `npm run release:minor` | Bump minor version, commit, tag, push              |
+| `npm run release:major` | Bump major version, commit, tag, push              |
+| `npm run pub`           | Publish to npm (run after `release:*`)             |
 
 `tsconfig.json` has `noEmit: true` — pi loads `.ts` source directly. No build step.
 
@@ -33,10 +38,35 @@ pi extension that registers ClinePass as a model provider via pi's built-in `ope
 ## Install
 
 ```bash
+# From npm (published to pi.dev/packages)
+pi install npm:pi-clinepass-provider
+
+# From git
 pi install git:github.com/jellydn/pi-clinepass-provider
-# or local: pi install /path/to/this/repo
-# or quick test: pi -e /path/to/this/repo
+
+# Or local path
+pi install /path/to/pi-clinepass-provider
+
+# Quick test without installing
+pi -e /path/to/pi-clinepass-provider
 ```
+
+## Release
+
+```bash
+# 1. Bump version, commit, tag, push
+npm run release          # prompts for version bump type
+npm run release:patch    # 1.0.0 → 1.0.1
+npm run release:minor    # 1.0.0 → 1.1.0
+npm run release:major    # 1.0.0 → 2.0.0
+
+# 2. Publish to npm (requires npm auth)
+npm run pub
+```
+
+> `bumpp` handles version bumping, git commit, git tag, and git push.
+> `np` is configured for extra safety checks (clean working tree, tests pass, etc.)
+> but the simple `npm run release` + `npm run pub` flow works for most releases.
 
 ## Key gotchas
 
