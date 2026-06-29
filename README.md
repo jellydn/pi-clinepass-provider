@@ -1,6 +1,7 @@
-# Welcome to pi-clinepass-provider 🚀
+# pi-clinepass-provider 🚀
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/jellydn/pi-clinepass-provider/releases)
+[![npm](https://img.shields.io/npm/v/pi-clinepass-provider)](https://www.npmjs.com/package/pi-clinepass-provider)
+[![npm downloads](https://img.shields.io/npm/dm/pi-clinepass-provider)](https://www.npmjs.com/package/pi-clinepass-provider)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
@@ -10,7 +11,25 @@ ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom 
 
 [![Image from Gyazo](https://i.gyazo.com/f157bb2431d7c77556d5748c8b58c7a9.gif)](https://gyazo.com/f157bb2431d7c77556d5748c8b58c7a9)
 
-## 🏠 [Homepage](https://github.com/jellydn/pi-clinepass-provider)
+## 📦 Installation
+
+### As a pi extension (recommended)
+
+```sh
+pi install pi-clinepass-provider
+# or from git
+pi install git:github.com/jellydn/pi-clinepass-provider
+```
+
+### As an npm package
+
+```sh
+npm install pi-clinepass-provider
+# or
+pnpm add pi-clinepass-provider
+```
+
+> **Note:** This package requires `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` as peer dependencies. They are automatically available when installed as a pi extension; install them manually when using as a standalone npm dependency.
 
 ## Pre-requirements
 
@@ -42,20 +61,6 @@ ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom 
 | MiniMax M3        | `cline-pass/minimax-m3`        | 1M      |
 | Qwen3.7 Max       | `cline-pass/qwen3.7-max`       | 262K    |
 | Qwen3.7 Plus      | `cline-pass/qwen3.7-plus`      | 1M      |
-
-## Install
-
-```sh
-# From git (recommended)
-pi install git:github.com/jellydn/pi-clinepass-provider
-
-# Or from local path
-git clone https://github.com/jellydn/pi-clinepass-provider.git
-pi install /path/to/pi-clinepass-provider
-
-# Quick test without installing
-pi -e /path/to/pi-clinepass-provider
-```
 
 ## Authentication
 
