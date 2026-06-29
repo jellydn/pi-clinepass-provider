@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import { refreshToken, getApiKey } from "../../src/oauth.js";
-import { CLINE_REFRESH_ENDPOINT, DEFAULT_API_BASE } from "../../src/logic.js";
+import { DEFAULT_API_BASE } from "../../src/env.js";
+import { CLINE_REFRESH_ENDPOINT } from "../../src/workos.js";
 
 // ─── refreshToken dispatch ──────────────────────────────────────────────────
 

@@ -19,15 +19,14 @@
  */
 
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
+import { sanitizeApiKey, resolveApiBase } from "./env.js";
 import {
-  sanitizeApiKey,
   resolveClineAuthCredentials,
-  resolveApiBase,
   isWorkosToken,
   CLINE_REFRESH_ENDPOINT,
   WORKOS_TOKEN_LIFETIME_MS,
   WORKOS_REFRESH_MARGIN_MS,
-} from "./logic.js";
+} from "./workos.js";
 
 const DASHBOARD_URL = "https://app.cline.bot/settings/api-keys";
 const TEN_YEARS_MS = 10 * 365 * 24 * 60 * 60 * 1000; // API keys don't expire

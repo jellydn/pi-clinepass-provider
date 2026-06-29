@@ -1,0 +1,283 @@
+/**
+ * ClinePass model definitions and dynamic model discovery.
+ *
+ * @module clinepass-models
+ */
+
+import { isRecord, stringValue, numberValue, booleanValue } from "./utils.js";
+import { resolveApiBase } from "./env.js";
+
+// ─── Model Definitions ─────────────────────────────────────────────────────
+
+/**
+ * ClinePass curated open-weight coding models.
+ *
+ * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.2") as
+ * documented at https://docs.cline.bot/getting-started/clinepass — these are
+ * the values Cline's API expects in the `model` field.
+ *
+ * `contextWindow` is in tokens; `maxTokens` is the max output tokens.
+ * Reference pricing ($/M tokens) is from the ClinePass docs and is used for
+ * usage tracking — ClinePass itself is a flat $9.99/mo subscription.
+ */
+export interface ModelConfig {
+  id: string;
+  name: string;
+  reasoning: boolean;
+  input: readonly ["text"];
+  cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
+  contextWindow: number;
+  maxTokens: number;
+}
+
+export const MODELS: readonly ModelConfig[] = [
+  {
+    id: "cline-pass/glm-5.2",
+    name: "GLM-5.2 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
+    contextWindow: 200_000,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/kimi-k2.7-code",
+    name: "Kimi K2.7 Code (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0.95, output: 4.0, cacheRead: 0.19, cacheWrite: 0 },
+    contextWindow: 262_144,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/kimi-k2.6",
+    name: "Kimi K2.6 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0.95, output: 4.0, cacheRead: 0.16, cacheWrite: 0 },
+    contextWindow: 262_144,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/deepseek-v4-pro",
+    name: "DeepSeek V4 Pro (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
+    contextWindow: 1_000_000,
+    maxTokens: 384_000,
+  },
+  {
+    id: "cline-pass/deepseek-v4-flash",
+    name: "DeepSeek V4 Flash (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
+    contextWindow: 1_000_000,
+    maxTokens: 384_000,
+  },
+  {
+    id: "cline-pass/mimo-v2.5",
+    name: "MiMo-V2.5 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
+    contextWindow: 262_144,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/mimo-v2.5-pro",
+    name: "MiMo-V2.5-Pro (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
+    contextWindow: 262_144,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/minimax-m3",
+    name: "MiniMax M3 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/qwen3.7-max",
+    name: "Qwen3.7 Max (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 2.5, output: 7.5, cacheRead: 0.5, cacheWrite: 3.125 },
+    contextWindow: 262_144,
+    maxTokens: 131_072,
+  },
+  {
+    id: "cline-pass/qwen3.7-plus",
+    name: "Qwen3.7 Plus (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    // Qwen3.7 Plus has tiered pricing; we use the ≤256K rate as the default.
+    cost: { input: 0.4, output: 1.6, cacheRead: 0.04, cacheWrite: 0.5 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+  },
+];
+
+/**
+ * Return the model IDs registered for the ClinePass provider.
+ */
+export function modelIds(): string[] {
+  return MODELS.map((m) => m.id);
+}
+
+// ─── Dynamic Model Discovery ───────────────────────────────────────────────
+
+/** Endpoint for listing models (OpenAI-compatible, relative to API base). */
+export const MODELS_ENDPOINT = "/api/v1/models";
+
+/** Timeout for the model-list fetch (ms). Keeps registration responsive. */
+export const MODELS_FETCH_TIMEOUT_MS = 5_000;
+
+/**
+ * Raw model entry from the Cline API `/models` endpoint.
+ * Follows the OpenAI-compatible format, with optional Cline extensions.
+ */
+interface RawModelEntry {
+  id?: unknown;
+  name?: unknown;
+  context_length?: unknown;
+  max_output_tokens?: unknown;
+  pricing?: unknown;
+  reasoning?: unknown;
+}
+
+/**
+ * Parse a single raw model entry into a `ModelConfig`.
+ * Falls back to static-model values when the API doesn't provide a field.
+ */
+function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConfig | undefined {
+  const id = stringValue(raw.id);
+  if (!id) return undefined;
+
+  const name = stringValue(raw.name) ?? id;
+  const contextWindow = numberValue(raw.context_length) ?? fallback?.contextWindow ?? 128_000;
+  const maxTokens = numberValue(raw.max_output_tokens) ?? fallback?.maxTokens ?? 8_192;
+  const reasoning = booleanValue(raw.reasoning) ?? fallback?.reasoning ?? true;
+
+  // Parse pricing — OpenAI format uses string $/token; we use $/M tokens
+  const pricing = isRecord(raw.pricing) ? raw.pricing : undefined;
+  const cost = {
+    input:
+      numberValue(pricing?.prompt) != null
+        ? numberValue(pricing?.prompt)! * 1_000_000
+        : (fallback?.cost.input ?? 0),
+    output:
+      numberValue(pricing?.completion) != null
+        ? numberValue(pricing?.completion)! * 1_000_000
+        : (fallback?.cost.output ?? 0),
+    cacheRead:
+      numberValue(pricing?.cached_input) != null
+        ? numberValue(pricing?.cached_input)! * 1_000_000
+        : (fallback?.cost.cacheRead ?? 0),
+    cacheWrite: fallback?.cost.cacheWrite ?? 0,
+  };
+
+  return { id, name, reasoning, input: ["text"], cost, contextWindow, maxTokens };
+}
+
+/**
+ * Options for fetching remote models. All I/O is injectable for testability.
+ */
+export interface RemoteModelsOptions {
+  apiBase?: string;
+  apiKey?: string;
+  fetch?: typeof globalThis.fetch;
+  timeoutMs?: number;
+}
+
+/**
+ * Fetch the model list from the Cline API `/models` endpoint.
+ *
+ * Returns parsed `ModelConfig[]` on success, or `undefined` on any error
+ * (network failure, non-OK response, parse error, empty list). Callers
+ * should fall back to the static `MODELS` array when this returns `undefined`.
+ *
+ * The endpoint follows the OpenAI-compatible format: `{ data: [{ id, ... }] }`
+ * or a bare array `[{ id, ... }]`. Only models with `cline-pass/` prefixed IDs
+ * are included.
+ */
+export async function fetchRemoteModels(
+  options: RemoteModelsOptions = {},
+): Promise<ModelConfig[] | undefined> {
+  const apiBase = options.apiBase ?? resolveApiBase();
+  const apiKey = options.apiKey;
+  const fetchFn = options.fetch ?? globalThis.fetch;
+  const timeoutMs = options.timeoutMs ?? MODELS_FETCH_TIMEOUT_MS;
+
+  if (!apiKey || !fetchFn) return undefined;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetchFn(`${apiBase}${MODELS_ENDPOINT}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) return undefined;
+
+    const json: unknown = await response.json();
+    const rawList: RawModelEntry[] = Array.isArray(json)
+      ? json
+      : isRecord(json) && Array.isArray(json.data)
+        ? (json.data as RawModelEntry[])
+        : [];
+
+    if (rawList.length === 0) return undefined;
+
+    // Build a lookup from the static MODELS for fallback values
+    const staticById = new Map(MODELS.map((m) => [m.id, m]));
+
+    const parsed = rawList
+      .filter((raw) => {
+        const id = stringValue(raw?.id);
+        return id?.startsWith("cline-pass/");
+      })
+      .map((raw) => parseRemoteModel(raw, staticById.get(stringValue(raw.id)!)))
+      .filter((m): m is ModelConfig => m !== undefined);
+
+    return parsed.length > 0 ? parsed : undefined;
+  } catch {
+    // Network error, timeout, or parse failure — fall back to static list
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Resolve the model list for registration.
+ *
+ * Tries the remote API first (if an API key is available), falling back to
+ * the static `MODELS` array on any error. This keeps the extension functional
+ * even when the Cline API doesn't expose a `/models` endpoint yet (currently
+ * returns 404), and automatically benefits from dynamic discovery when the
+ * endpoint becomes available.
+ *
+ * @param apiKey The API key to use for the fetch (optional)
+ * @param options I/O options for testability
+ */
+export async function resolveModels(
+  apiKey?: string,
+  options: RemoteModelsOptions = {},
+): Promise<readonly ModelConfig[]> {
+  if (apiKey) {
+    const remote = await fetchRemoteModels({ ...options, apiKey });
+    if (remote && remote.length > 0) {
+      return remote;
+    }
+  }
+  return MODELS;
+}
