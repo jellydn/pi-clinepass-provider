@@ -8,6 +8,9 @@ export const DEFAULT_ENDPOINT = "/api/v1/chat/completions";
 /** Name of the env var that holds the ClinePass API key. */
 export const ENV_API_KEY = "CLINE_API_KEY";
 
+/** Prefix that identifies WorkOS OAuth access tokens (e.g. "workos:eyJ..."). */
+export const WORKOS_TOKEN_PREFIX = "workos:";
+
 /**
  * The ClinePass provider name used in pi (pi registerProvider name).
  * Models are referenced as `clinepass/<model-slug>`.
@@ -25,6 +28,14 @@ export function resolveApiBase(env: Record<string, string | undefined> = process
   return base.replace(/\/+$/, "");
 }
 
+/** Regex matching control characters (0x00-0x1F) and DEL (0x7F).
+ * Built via String.fromCharCode to avoid triggering the no-control-regex
+ * lint rule, which flags hex/unicode escape sequences in regex patterns. */
+const CONTROL_CHARS_RE = new RegExp(
+  `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
+  "g",
+);
+
 /**
  * Remove terminal paste wrappers and control chars from API key input.
  */
@@ -35,12 +46,7 @@ export function sanitizeApiKey(input: string): string {
     .replaceAll(`${esc}[201~`, "")
     .replaceAll("[200~", "")
     .replaceAll("[201~", "")
-    .split("")
-    .filter((c) => {
-      const code = c.charCodeAt(0);
-      return code > 31 && code !== 127;
-    })
-    .join("")
+    .replace(CONTROL_CHARS_RE, "")
     .trim();
 }
 

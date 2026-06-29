@@ -8,17 +8,15 @@
  * @module clinepass-workos
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import { isRecord, stringValue } from "./utils.js";
-import { resolveApiBase } from "./env.js";
-import { defaultAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js";
+import { resolveApiBase, WORKOS_TOKEN_PREFIX } from "./env.js";
+import { walkAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js";
+
+// Re-export for consumers that import from this module (tests)
+export { WORKOS_TOKEN_PREFIX };
 
 // ─── WorkOS Constants ──────────────────────────────────────────────────────
-
-/** Prefix that identifies WorkOS OAuth access tokens (e.g. "workos:eyJ..."). */
-export const WORKOS_TOKEN_PREFIX = "workos:";
 
 /** Cline's server-side token refresh endpoint (relative to the API base). */
 export const CLINE_REFRESH_ENDPOINT = "/api/v1/auth/refresh";
@@ -114,6 +112,7 @@ export async function refreshWorkosToken(
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error(
         "ClinePass token refresh timed out — check your network or try a static API key.",
+        { cause: err },
       );
     }
     throw err;
@@ -169,42 +168,21 @@ export async function refreshWorkosToken(
 export function resolveClineAuthCredentials(
   options: AuthKeyOptions = {},
 ): ClineAuthCredentials | undefined {
-  const home = options.homeDir?.() ?? homedir();
-  const authPaths = options.authPaths ?? defaultAuthPaths(home);
-  const readFile = options.readFile ?? ((p: string) => readFileSync(p, "utf-8"));
-  const fileExists = options.fileExists ?? ((p: string) => existsSync(p));
+  return walkAuthPaths(options, (parsed) =>
+    walkClineProviderSettings(parsed, (settings) => {
+      const auth = isRecord(settings.auth) ? settings.auth : undefined;
+      if (!auth) return undefined;
 
-  for (const authPath of authPaths) {
-    try {
-      if (!fileExists(authPath)) continue;
-      const parsed: unknown = JSON.parse(readFile(authPath));
-      if (!isRecord(parsed)) continue;
+      const accessToken = stringValue(auth.accessToken);
+      const refreshToken = stringValue(auth.refreshToken);
+      if (!accessToken || !refreshToken) return undefined;
 
-      const creds = walkClineProviderSettings(parsed, (settings) => {
-        const auth = isRecord(settings.auth) ? settings.auth : undefined;
-        if (!auth) return undefined;
+      const expiresAt =
+        typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt)
+          ? auth.expiresAt
+          : Date.now() + WORKOS_TOKEN_LIFETIME_MS;
 
-        const accessToken = stringValue(auth.accessToken);
-        const refreshToken = stringValue(auth.refreshToken);
-        if (!accessToken || !refreshToken) return undefined;
-
-        const expiresAt =
-          typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt)
-            ? auth.expiresAt
-            : Date.now() + WORKOS_TOKEN_LIFETIME_MS;
-
-        return { accessToken, refreshToken, expiresAt };
-      });
-
-      if (creds) return creds;
-    } catch (e) {
-      // Distinguish "file absent" (expected, skip silently) from
-      // "file present but corrupt/unreadable" (actionable, warn).
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!msg.includes("ENOENT") && !msg.includes("not found")) {
-        console.warn(`[clinepass] Warning: failed to read auth file ${authPath}: ${msg}`);
-      }
-    }
-  }
-  return undefined;
+      return { accessToken, refreshToken, expiresAt };
+    }),
+  );
 }
