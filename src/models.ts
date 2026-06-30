@@ -28,6 +28,16 @@ export interface ModelConfig {
   cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
   contextWindow: number;
   maxTokens: number;
+  /**
+   * Maps pi thinking levels to provider-specific reasoning_effort values; null
+   * marks a level unsupported. The Cline client exposes reasoning effort as
+   * low/medium/high (plus "off" to disable reasoning) — it does not support
+   * "minimal" or "xhigh", so those are mapped to null unless a model's upstream
+   * provider offers an extra-high tier (e.g. z.ai "max", DeepSeek "max").
+   */
+  thinkingLevelMap?: Partial<
+    Record<"off" | "minimal" | "low" | "medium" | "high" | "xhigh", string | null>
+  >;
 }
 
 export const MODELS: readonly ModelConfig[] = [
@@ -39,6 +49,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
     contextWindow: 200_000,
     maxTokens: 131_072,
+    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
   },
   {
     id: "cline-pass/kimi-k2.7-code",
@@ -48,6 +59,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.95, output: 4.0, cacheRead: 0.19, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
+    thinkingLevelMap: { off: null },
   },
   {
     id: "cline-pass/kimi-k2.6",
@@ -57,6 +69,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.95, output: 4.0, cacheRead: 0.16, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
+    thinkingLevelMap: { off: null },
   },
   {
     id: "cline-pass/deepseek-v4-pro",
@@ -66,6 +79,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
+    thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", xhigh: "high" },
   },
   {
     id: "cline-pass/deepseek-v4-flash",
@@ -75,6 +89,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
+    thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", xhigh: "high" },
   },
   {
     id: "cline-pass/mimo-v2.5",
@@ -84,6 +99,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
+    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
   },
   {
     id: "cline-pass/mimo-v2.5-pro",
@@ -93,6 +109,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
+    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
   },
   {
     id: "cline-pass/minimax-m3",
@@ -102,6 +119,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
+    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
   },
   {
     id: "cline-pass/qwen3.7-max",
@@ -111,6 +129,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 2.5, output: 7.5, cacheRead: 0.5, cacheWrite: 3.125 },
     contextWindow: 262_144,
     maxTokens: 131_072,
+    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
   },
   {
     id: "cline-pass/qwen3.7-plus",
@@ -121,6 +140,7 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.4, output: 1.6, cacheRead: 0.04, cacheWrite: 0.5 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
+    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
   },
 ];
 
@@ -180,7 +200,16 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
     cacheWrite: fallback?.cost.cacheWrite ?? 0,
   };
 
-  return { id, name, reasoning, input: ["text"], cost, contextWindow, maxTokens };
+  return {
+    id,
+    name,
+    reasoning,
+    input: ["text"],
+    cost,
+    contextWindow,
+    maxTokens,
+    thinkingLevelMap: fallback?.thinkingLevelMap,
+  };
 }
 
 /**
