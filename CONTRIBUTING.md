@@ -14,6 +14,8 @@ npm install
 prek install
 ```
 
+> **Note:** `prek` is a global tool (via [mise](https://mise.jdx.dev)) that runs lint and format checks. Install it with `mise install prek` if not already available.
+
 **Requirements:** Node.js >= 22, npm >= 10.
 
 Peer dependencies (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`) are in `devDependencies` — `npm install` pulls them automatically.
@@ -22,15 +24,15 @@ No build step. Pi loads `.ts` source directly (`tsconfig.json` has `noEmit: true
 
 ## Commands
 
-| Command                 | Purpose                                |
-| ----------------------- | -------------------------------------- |
-| `npm test`              | Run 132 unit tests via Vitest          |
-| `npm run test:watch`    | Run tests in watch mode                |
-| `npm run test:e2e`      | E2E smoke tests (needs `CLINE_API_KEY`) |
-| `npm run lint`          | Lint all files with oxlint             |
-| `npm run format`        | Auto-format all files with oxfmt       |
-| `npm run format:check`  | Check formatting without writing       |
-| `npm run typecheck`     | TypeScript strict mode check           |
+| Command                | Purpose                                 |
+| ---------------------- | --------------------------------------- |
+| `npm test`             | Run unit tests via Vitest               |
+| `npm run test:watch`   | Run tests in watch mode                 |
+| `npm run test:e2e`     | E2E smoke tests (needs `CLINE_API_KEY`) |
+| `npm run lint`         | Lint all files with oxlint              |
+| `npm run format`       | Auto-format all files with oxfmt        |
+| `npm run format:check` | Check formatting without writing        |
+| `npm run typecheck`    | TypeScript strict mode check            |
 
 Run `prek run --all-files` before pushing to run the full pre-commit suite.
 
@@ -38,7 +40,7 @@ Run `prek run --all-files` before pushing to run the full pre-commit suite.
 
 ### TypeScript
 
-- **Strict mode** is enabled — no `any`, no implicit `null`, no unsafe casts.
+- **Strict mode** is enabled — strict null checks, no implicit `any`, no unchecked indexed access, no unsafe casts.
 - All exports have JSDoc comments (`@param`, `@returns`, `@module` for modules).
 - Use `unknown` at I/O boundaries (JSON parse, API responses), guarded by type predicates (`isRecord`, `stringValue`) before use.
 - Prefer `readonly` arrays and `const` over `let`.
@@ -125,7 +127,7 @@ CLINE_API_KEY=your_key npm run test:e2e
 
 Follow [conventional commits](https://www.conventionalcommits.org/):
 
-```
+```text
 type(scope): description
 
 - bullet points for details

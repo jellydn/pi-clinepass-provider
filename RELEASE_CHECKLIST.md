@@ -22,7 +22,7 @@ npm run lint
 # Format: consistent
 npm run format:check
 
-# Pre-commit hooks
+# Pre-commit hooks (via `prek` — global tool, install with `mise install prek`)
 prek run --all-files
 ```
 
@@ -43,7 +43,7 @@ npm run test:e2e
 
 If the automated smoke test passes, additionally verify:
 
-- [ ] **Model discovery** — `pi --list-models clinepass` shows at least 8 models (dynamic discovery may add/remove models)
+- [ ] **Model discovery** — `pi --list-models clinepass` shows the expected models (dynamic discovery may add/remove models)
 - [ ] **Chat completions** — `pi --model clinepass/cline-pass/deepseek-v4-flash -p "Hello"` returns a coherent response
 - [ ] **Login flow (WorkOS OAuth)** — if you have `cline auth` credentials, `pi /login` → ClinePass detects them automatically
 - [ ] **Login flow (static API key)** — `pi /login` → ClinePass → paste key works without errors
@@ -75,6 +75,7 @@ npm run release:major    # 1.0.3 → 2.0.0
 ```
 
 This runs `bumpp` which:
+
 - Bumps version in `package.json`
 - Commits the change
 - Creates a git tag (`vX.Y.Z`)
@@ -115,10 +116,12 @@ npm view pi-clinepass-provider version
 If a release needs to be rolled back:
 
 ```bash
-# Unpublish from npm (within 72 hours of publish)
-npm unpublish pi-clinepass-provider@X.Y.Z
+# Deprecate the package on npm (preferred for established releases)
+npm deprecate pi-clinepass-provider@X.Y.Z "deprecated due to rollback, use vX.Y.Z+1"
 
 # Delete the GitHub release and tag
 git tag -d vX.Y.Z
 git push origin :refs/tags/vX.Y.Z
 ```
+
+> **Note:** `npm unpublish` is only possible within 72 hours of publishing and requires the `--force` flag. For established releases, deprecation is the standard approach.
