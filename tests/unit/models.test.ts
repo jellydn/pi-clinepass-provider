@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { modelIds, MODELS, fetchRemoteModels, resolveModels } from "../../src/models.js";
+import {
+  modelIds,
+  MODELS,
+  fetchRemoteModels,
+  resolveModels,
+  NO_THINKING_MAP,
+} from "../../src/models.js";
 
 // ─── modelIds / MODELS ──────────────────────────────────────────────────────
 
@@ -37,23 +43,14 @@ describe("MODELS", () => {
     }
   });
 
-  it("every model declares a thinkingLevelMap", () => {
-    // All 10 ClinePass models should have an explicit thinkingLevelMap so the
-    // supported thinking levels are self-documenting and consistent.
-    for (const m of MODELS) {
-      expect(m.thinkingLevelMap).toBeDefined();
-    }
-  });
-
-  it("thinkingLevelMap values are valid (string reasoning_effort, null, or omitted)", () => {
+  it("every model declares all six thinking levels", () => {
     const validLevels = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
     for (const m of MODELS) {
-      const map = m.thinkingLevelMap!;
+      const map = m.thinkingLevelMap;
       for (const level of validLevels) {
+        expect(map).toHaveProperty(level);
         const value = map[level];
-        // A level is either mapped to a reasoning_effort string, explicitly
-        // unsupported (null), or omitted (undefined → uses the provider default).
-        expect(value === null || value === undefined || typeof value === "string").toBe(true);
+        expect(value === null || typeof value === "string").toBe(true);
       }
     }
   });
@@ -61,8 +58,8 @@ describe("MODELS", () => {
   it("models without an upstream xhigh tier restrict minimal and xhigh to null", () => {
     // The Cline client only exposes reasoning effort as low/medium/high (plus
     // "off"). It does not support "minimal" or "xhigh". Models whose upstream
-    // provider has no extra-high tier (e.g. z.ai "max", DeepSeek "max") must
-    // map both minimal and xhigh to null.
+    // provider has no extra-high tier (e.g. z.ai "max") must map both minimal
+    // and xhigh to null.
     const withoutXhigh = [
       "cline-pass/mimo-v2.5",
       "cline-pass/mimo-v2.5-pro",
@@ -72,30 +69,37 @@ describe("MODELS", () => {
     ];
     for (const id of withoutXhigh) {
       const model = MODELS.find((m) => m.id === id)!;
-      const map = model.thinkingLevelMap!;
+      const map = model.thinkingLevelMap;
       expect(map.minimal).toBeNull();
       expect(map.xhigh).toBeNull();
       // low/medium/high are supported and send the standard Cline effort values.
       expect(map.low).toBe("low");
       expect(map.medium).toBe("medium");
       expect(map.high).toBe("high");
-      // "off" is supported (not null) — reasoning can be disabled.
-      expect(map.off).not.toBeNull();
+      // "off" is explicitly supported — reasoning can be disabled.
+      expect(map.off).toBe("off");
     }
   });
 
-  it("always-reasoning models (Kimi) mark off as null", () => {
+  it("always-reasoning models (Kimi) mark off as null, support others like standard", () => {
     const alwaysOn = ["cline-pass/kimi-k2.7-code", "cline-pass/kimi-k2.6"];
     for (const id of alwaysOn) {
       const model = MODELS.find((m) => m.id === id)!;
-      expect(model.thinkingLevelMap!.off).toBeNull();
+      const map = model.thinkingLevelMap;
+      expect(map.off).toBeNull();
+      expect(map.minimal).toBeNull();
+      expect(map.xhigh).toBeNull();
+      expect(map.low).toBe("low");
+      expect(map.medium).toBe("medium");
+      expect(map.high).toBe("high");
     }
   });
 
   it("DeepSeek V4 models only support high (and xhigh clamped to high)", () => {
     for (const id of ["cline-pass/deepseek-v4-pro", "cline-pass/deepseek-v4-flash"]) {
       const model = MODELS.find((m) => m.id === id)!;
-      const map = model.thinkingLevelMap!;
+      const map = model.thinkingLevelMap;
+      expect(map.off).toBe("off");
       expect(map.minimal).toBeNull();
       expect(map.low).toBeNull();
       expect(map.medium).toBeNull();
@@ -106,12 +110,13 @@ describe("MODELS", () => {
 
   it("GLM-5.2 supports low/medium/high/xhigh (minimal unsupported)", () => {
     const model = MODELS.find((m) => m.id === "cline-pass/glm-5.2")!;
-    const map = model.thinkingLevelMap!;
+    const map = model.thinkingLevelMap;
+    expect(map.off).toBe("off");
     expect(map.minimal).toBeNull();
     expect(map.low).toBe("low");
     expect(map.medium).toBe("medium");
     expect(map.high).toBe("high");
-    expect(map.xhigh).toBe("xhigh");
+    expect(map.xhigh).toBe("max");
   });
 });
 
@@ -226,6 +231,21 @@ describe("fetchRemoteModels", () => {
     expect(result![0].contextWindow).toBe(staticModel!.contextWindow);
     expect(result![0].maxTokens).toBe(staticModel!.maxTokens);
     expect(result![0].cost.input).toBe(staticModel!.cost.input);
+  });
+
+  it("uses NO_THINKING_MAP when remote model reports reasoning: false", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: "cline-pass/non-reasoning-model", reasoning: false }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(1);
+    expect(result![0].reasoning).toBe(false);
+    expect(result![0].thinkingLevelMap).toEqual(NO_THINKING_MAP);
   });
 
   it("returns undefined for empty model list", async () => {

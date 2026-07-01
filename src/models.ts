@@ -9,6 +9,43 @@ import { resolveApiBase } from "./env.js";
 
 // ─── Model Definitions ─────────────────────────────────────────────────────
 
+/** Pi thinking levels that models map to provider-specific reasoning_effort. */
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+/**
+ * Explicit capability matrix mapping every thinking level to a
+ * provider-specific `reasoning_effort` string or `null` (unsupported).
+ * Every model must declare all six levels — there are no implicit defaults.
+ */
+export type ThinkingLevelMap = Readonly<Record<ThinkingLevel, string | null>>;
+
+/**
+ * Default thinking level map for remote models without a static fallback.
+ * Assumes low/medium/high are supported and marks minimal/xhigh unsupported,
+ * matching the Cline client's exposed levels.
+ */
+export const DEFAULT_THINKING_LEVEL_MAP: ThinkingLevelMap = {
+  off: "off",
+  minimal: null,
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: null,
+};
+
+/**
+ * All-null thinking level map used when a model reports reasoning: false.
+ * Every level is unsupported — reasoning is simply not available.
+ */
+export const NO_THINKING_MAP: ThinkingLevelMap = {
+  off: null,
+  minimal: null,
+  low: null,
+  medium: null,
+  high: null,
+  xhigh: null,
+};
+
 /**
  * ClinePass curated open-weight coding models.
  *
@@ -29,15 +66,11 @@ export interface ModelConfig {
   contextWindow: number;
   maxTokens: number;
   /**
-   * Maps pi thinking levels to provider-specific reasoning_effort values; null
-   * marks a level unsupported. The Cline client exposes reasoning effort as
-   * low/medium/high (plus "off" to disable reasoning) — it does not support
-   * "minimal" or "xhigh", so those are mapped to null unless a model's upstream
-   * provider offers an extra-high tier (e.g. z.ai "max", DeepSeek "max").
+   * Maps every pi thinking level to a provider-specific reasoning_effort
+   * string, or `null` to mark a level as unsupported. Every model must
+   * declare all six levels explicitly — there are no implicit defaults.
    */
-  thinkingLevelMap?: Partial<
-    Record<"off" | "minimal" | "low" | "medium" | "high" | "xhigh", string | null>
-  >;
+  thinkingLevelMap: ThinkingLevelMap;
 }
 
 export const MODELS: readonly ModelConfig[] = [
@@ -49,7 +82,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
     contextWindow: 200_000,
     maxTokens: 131_072,
-    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "max",
+    },
   },
   {
     id: "cline-pass/kimi-k2.7-code",
@@ -59,7 +99,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.95, output: 4.0, cacheRead: 0.19, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
-    thinkingLevelMap: { off: null },
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
   {
     id: "cline-pass/kimi-k2.6",
@@ -69,7 +116,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.95, output: 4.0, cacheRead: 0.16, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
-    thinkingLevelMap: { off: null },
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
   {
     id: "cline-pass/deepseek-v4-pro",
@@ -79,7 +133,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
-    thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", xhigh: "high" },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "high",
+      xhigh: "high",
+    },
   },
   {
     id: "cline-pass/deepseek-v4-flash",
@@ -89,7 +150,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
-    thinkingLevelMap: { minimal: null, low: null, medium: null, high: "high", xhigh: "high" },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "high",
+      xhigh: "high",
+    },
   },
   {
     id: "cline-pass/mimo-v2.5",
@@ -99,7 +167,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
-    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
   {
     id: "cline-pass/mimo-v2.5-pro",
@@ -109,7 +184,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
-    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
   {
     id: "cline-pass/minimax-m3",
@@ -119,7 +201,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
-    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
   {
     id: "cline-pass/qwen3.7-max",
@@ -129,7 +218,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 2.5, output: 7.5, cacheRead: 0.5, cacheWrite: 3.125 },
     contextWindow: 262_144,
     maxTokens: 131_072,
-    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
   {
     id: "cline-pass/qwen3.7-plus",
@@ -140,7 +236,14 @@ export const MODELS: readonly ModelConfig[] = [
     cost: { input: 0.4, output: 1.6, cacheRead: 0.04, cacheWrite: 0.5 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
-    thinkingLevelMap: { minimal: null, low: "low", medium: "medium", high: "high", xhigh: null },
+    thinkingLevelMap: {
+      off: "off",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
   },
 ];
 
@@ -208,7 +311,10 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
     cost,
     contextWindow,
     maxTokens,
-    thinkingLevelMap: fallback?.thinkingLevelMap,
+    // Attach a reasoning-aware map: static fallback → sensible default → all-null.
+    thinkingLevelMap: reasoning
+      ? (fallback?.thinkingLevelMap ?? DEFAULT_THINKING_LEVEL_MAP)
+      : NO_THINKING_MAP,
   };
 }
 
