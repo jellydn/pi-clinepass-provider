@@ -11,7 +11,7 @@
 import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import { isRecord, stringValue } from "./utils.js";
 import { resolveApiBase, WORKOS_TOKEN_PREFIX } from "./env.js";
-import { walkAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js";
+import { walkAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./config-store.js";
 
 // Re-export for consumers that import from this module (tests)
 export { WORKOS_TOKEN_PREFIX };
