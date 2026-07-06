@@ -41,10 +41,6 @@ function credentialsFromApiKey(apiKey: string): OAuthCredentials {
   };
 }
 
-function isWorkosRefreshFailure(err: unknown): boolean {
-  return err instanceof Error && /token refresh failed/i.test(err.message);
-}
-
 async function loginWithManualApiKey(
   callbacks: OAuthLoginCallbacks,
   reason?: string,
@@ -107,12 +103,11 @@ export async function login(callbacks: OAuthLoginCallbacks): Promise<OAuthCreden
     try {
       return await loginWithWorkosCredentials(clineAuth);
     } catch (err) {
-      if (!isWorkosRefreshFailure(err)) throw err;
       const message = err instanceof Error ? err.message : String(err);
       console.warn(`[clinepass] WorkOS auto-login failed: ${message}`);
       return loginWithManualApiKey(
         callbacks,
-        "Cline subscription login failed (refresh token may be expired).",
+        "Cline subscription login failed (refresh token may be expired or network is unreachable).",
       );
     }
   }

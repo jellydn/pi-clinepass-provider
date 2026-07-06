@@ -131,6 +131,31 @@ describe("login — WorkOS auto-login", () => {
     );
     warnSpy.mockRestore();
   });
+
+  it("falls back to manual API key paste when WorkOS refresh times out", async () => {
+    const expiresAt = Date.now() - 1000;
+    mockResolveClineAuthCredentials.mockReturnValue({
+      accessToken: "workos:eyJexpired",
+      refreshToken: "rt_expired",
+      expiresAt,
+    });
+    mockRefreshWorkosToken.mockRejectedValue(
+      new Error("ClinePass token refresh timed out — check your network or try a static API key."),
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onAuth = vi.fn();
+    const callbacks = makeCallbacks({
+      onAuth,
+      onPrompt: async () => "cline_api_key_abcdefghij1234567890",
+    });
+
+    const result = await login(callbacks);
+
+    expect(onAuth).toHaveBeenCalledWith({ url: "https://app.cline.bot/settings/api-keys" });
+    expect(result.access).toBe("cline_api_key_abcdefghij1234567890");
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("token refresh timed out"));
+    warnSpy.mockRestore();
+  });
 });
 
 // ─── login — Manual API key paste path ──────────────────────────────────────
