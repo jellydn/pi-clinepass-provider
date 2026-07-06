@@ -12,5 +12,5 @@ import extension from "../../src/index.js";
 
 // If pi's ExtensionAPI changes (e.g. new required fields, different
 // function signature), TypeScript will error here.
-const _contract: (api: ExtensionAPI) => Promise<void> = extension;
-void _contract;
+const contractCheck: (api: ExtensionAPI) => Promise<void> = extension;
+void contractCheck;
