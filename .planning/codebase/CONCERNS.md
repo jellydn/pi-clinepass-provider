@@ -6,10 +6,10 @@
 
 **`AGENTS.md` is stale (references deleted `src/logic.ts`):**
 
-- Issue: The project `AGENTS.md` describes the pre-refactor layout — it says `src/logic.ts` holds "Pure logic: model definitions, dynamic model discovery, API key resolution, WorkOS OAuth credential parsing (`resolveClineAuthCredentials`, `isWorkosToken`), sanitization, URL builder." That module was deleted in the ADR-0006 refactor and split into `env.ts`, `models.ts`, `auth.ts`, `workos.ts`, `errors.ts`, `utils.ts`. It also locates `refreshToken()`/OAuth in `oauth.ts` correctly but the "Key gotchas" describe `isWorkosToken` as if it lives in logic/oauth when it's now in `workos.ts`.
-- Files: `AGENTS.md`
-- Impact: Agents/contributors following AGENTS.md look for a non-existent file and get a wrong mental model of module ownership. The other docs (CONTEXT.md, CONTRIBUTING.md, ADR-0006, this map) are accurate.
-- Fix approach: Rewrite the "Architecture" section of `AGENTS.md` to list the 9 actual `src/` modules and their responsibilities (mirror `.planning/codebase/STRUCTURE.md` / `ARCHITECTURE.md`). Update the "Key gotchas" to reflect `workos.ts` as the WorkOS protocol owner and `env.ts` as the `WORKOS_TOKEN_PREFIX` home (ADR-0007).
+- Issue: The "Architecture" section of `AGENTS.md` describes the pre-refactor layout — it lists only 3 modules (`index.ts`, `logic.ts`, `oauth.ts`) and says the deleted `src/logic.ts` holds "Pure logic: model definitions, dynamic model discovery (`fetchRemoteModels`, `resolveModels`), API key resolution, WorkOS OAuth credential parsing (`resolveClineAuthCredentials`, `isWorkosToken`), sanitization, URL builder." That module was deleted in the ADR-0006 refactor and split into 6 modules (`env.ts`, `models.ts`, `auth.ts`, `workos.ts`, `errors.ts`, `utils.ts`), plus `error-handler.ts` was extracted — 7 of the 9 current `src/` modules are missing from the list. `isWorkosToken` and `resolveClineAuthCredentials` now live in `workos.ts`; `WORKOS_TOKEN_PREFIX` lives in `env.ts` (re-exported by `workos.ts` per ADR-0007). The `oauth.ts` entry is still accurate. The "Key gotchas" section is also still accurate (verified: `granttype` no-underscore, `workos:` prefix, single-use rotation, lint override all match current code).
+- Files: `AGENTS.md` (lines 26-30, the Architecture section)
+- Impact: Agents/contributors following AGENTS.md look for a non-existent `src/logic.ts` and get a wrong mental model of module ownership — 7 real modules are invisible to them. The other docs (CONTEXT.md, CONTRIBUTING.md, ADR-0006/0007, this map) are accurate.
+- Fix approach: Rewrite the "Architecture" section of `AGENTS.md` to list the 9 actual `src/` modules and their responsibilities (mirror `.planning/codebase/STRUCTURE.md` / `ARCHITECTURE.md`). The "Key gotchas" section needs no change.
 
 **`src/models.ts` exceeds the 300-line guideline:**
 
@@ -35,8 +35,8 @@ None known. All 147 unit tests pass; typecheck and lint are clean (verified 2026
 
 - Risk: WorkOS refresh tokens are single-use and rotated on each refresh. If a refresh succeeds on the server but the response is lost (network drop after 200), the old token is invalidated and the new one is never persisted — the user is silently logged out.
 - Files: `src/workos.ts` `refreshWorkosToken`, `src/oauth.ts` `refreshToken`
-- Current mitigation: `refreshWorkosToken` has a 15s timeout and throws on non-OK; `login()` falls back to manual paste on refresh failure. But mid-session refresh failures (pi-driven, not login-driven) surface as an error with a recovery hint; there's no automatic re-login.
-- Recommendations: Document the single-use risk in ADR-0005 if not already; consider having pi's refresh-failure path prompt `/login`. Acceptable as-is for a client extension.
+- Current mitigation: `refreshWorkosToken` has a 15s timeout and throws on non-OK; `login()` falls back to manual paste on refresh failure. ADR-0005 already documents the single-use rotation risk thoroughly (Context, "Single-use rotation awareness" decision bullet, and "Token rotation fragility" in Negative Consequences — "a failed refresh (network error, crash) invalidates the existing refresh token. The user must re-run `cline auth` to recover."). The remaining gap is the mid-session case: pi-driven `refreshToken` failures (not login-driven) surface as an error with a recovery hint, but there's no automatic re-login prompt — the user must manually re-run `/login`.
+- Recommendations: No doc change needed (ADR-0005 covers it). Optional: if pi's refresh-failure path could trigger a `/login` re-prompt automatically, that would close the mid-session recovery gap. Acceptable as-is for a client extension.
 
 ## Performance Bottlenecks
 
@@ -75,8 +75,8 @@ None significant. The extension is stateless after registration. Startup does on
 
 **Auth file reading:**
 
-- Current capacity: 2 fixed auth paths, read once at startup / per `resolveApiKey` call.
-- Limit: Linear in number of auth files (currently 2). No concern.
+- Current capacity: 2 fixed auth paths (`~/.cline/data/settings/providers.json`, `~/.pi/agent/auth.json`), walked per `resolveApiKey` call (startup) and per `resolveClineAuthCredentials` call (`/login`).
+- Limit: Linear in number of auth paths (currently 2). No concern.
 
 ## Dependencies at Risk
 
