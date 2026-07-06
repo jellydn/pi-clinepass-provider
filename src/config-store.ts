@@ -16,6 +16,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { isRecord } from "./utils.js";
 
+function isMissingAuthFileError(error: unknown): boolean {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    if (code === "ENOENT") return true;
+  }
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes("ENOENT") || msg.includes("not found");
+}
+
 // ─── Options ────────────────────────────────────────────────────────────────
 
 /**
@@ -70,22 +79,25 @@ export function walkAuthPaths<T>(
   const fileExists = options.fileExists ?? ((p: string) => existsSync(p));
 
   for (const authPath of authPaths) {
+    let parsed: unknown;
     try {
       if (!fileExists(authPath)) continue;
-      const parsed: unknown = JSON.parse(readFile(authPath));
-      if (!isRecord(parsed)) continue;
-
-      const result = extract(parsed);
-      if (result !== undefined) return result;
+      parsed = JSON.parse(readFile(authPath));
     } catch (e) {
       // Distinguish "file absent" (expected, skip silently) from
       // "file present but corrupt/unreadable" (actionable, warn).
       // Never log file contents or the resolved key.
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!msg.includes("ENOENT") && !msg.includes("not found")) {
+      if (!isMissingAuthFileError(e)) {
+        const msg = e instanceof Error ? e.message : String(e);
         console.warn(`[clinepass] Warning: failed to read auth file ${authPath}: ${msg}`);
       }
+      continue;
     }
+
+    if (!isRecord(parsed)) continue;
+
+    const result = extract(parsed);
+    if (result !== undefined) return result;
   }
   return undefined;
 }
@@ -106,6 +118,7 @@ export function walkClineProviderSettings<T>(
   parsed: Record<string, unknown>,
   extract: (settings: Record<string, unknown>) => T | undefined,
 ): T | undefined {
+  if (!isRecord(parsed)) return undefined;
   const providers = isRecord(parsed.providers) ? parsed.providers : undefined;
   if (!providers) return undefined;
 

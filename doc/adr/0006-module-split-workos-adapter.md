@@ -92,4 +92,4 @@ Both `src/auth.ts` and `src/workos.ts` now import these utilities from `config-s
 
 ### Rationale
 
-The extraction was motivated by the [ADR-0006](#) assessment that the dependency graph was "clean" — on re-examination, the `workos → auth` edge was technically acyclic but semantically misleading. The counter-argument in the original split ("moving them would require either duplicating or extracting") was resolved by extracting. At 7 source modules the overhead of one additional file is negligible, and the module name `config-store.ts` communicates its purpose at a glance.
+The extraction was motivated by this ADR's original assessment that the dependency graph was "clean" — on re-examination, the `workos → auth` edge was technically acyclic but semantically misleading. The counter-argument in the original split ("moving them would require either duplicating or extracting") was resolved by extracting. At 7 source modules the overhead of one additional file is negligible, and the module name `config-store.ts` communicates its purpose at a glance.

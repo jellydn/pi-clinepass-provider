@@ -71,22 +71,46 @@ describe("walkAuthPaths", () => {
     const readFile = () => "not json";
     const fileExists = () => true;
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = walkAuthPaths({ readFile, fileExists }, () => "value");
-    expect(result).toBeUndefined();
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("failed to read auth file"));
-    consoleSpy.mockRestore();
+    try {
+      const result = walkAuthPaths({ readFile, fileExists }, () => "value");
+      expect(result).toBeUndefined();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("failed to read auth file"));
+    } finally {
+      consoleSpy.mockRestore();
+    }
   });
 
   it("skips files that throw ENOENT without logging", () => {
     const readFile = () => {
-      throw new Error("ENOENT");
+      const error = new Error("no such file");
+      (error as NodeJS.ErrnoException).code = "ENOENT";
+      throw error;
     };
     const fileExists = () => true;
     const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = walkAuthPaths({ readFile, fileExists }, () => "value");
-    expect(result).toBeUndefined();
-    expect(consoleSpy).not.toHaveBeenCalled();
-    consoleSpy.mockRestore();
+    try {
+      const result = walkAuthPaths({ readFile, fileExists }, () => "value");
+      expect(result).toBeUndefined();
+      expect(consoleSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  });
+
+  it("propagates extractor errors without mislabeling them as file read failures", () => {
+    const readFile = () => JSON.stringify({ apiKey: "key" });
+    const fileExists = () => true;
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      expect(() =>
+        walkAuthPaths({ readFile, fileExists }, () => {
+          throw new Error("extractor bug");
+        }),
+      ).toThrow("extractor bug");
+      expect(consoleSpy).not.toHaveBeenCalled();
+    } finally {
+      consoleSpy.mockRestore();
+    }
   });
 
   it("skips non-object JSON", () => {
@@ -135,6 +159,12 @@ describe("walkClineProviderSettings", () => {
 
   it("returns undefined when providers field is missing", () => {
     expect(walkClineProviderSettings({}, extractApiKey)).toBeUndefined();
+  });
+
+  it("returns undefined when parsed is not a record", () => {
+    expect(
+      walkClineProviderSettings(null as unknown as Record<string, unknown>, extractApiKey),
+    ).toBeUndefined();
   });
 
   it("returns undefined when providers is not an object", () => {

@@ -60,7 +60,7 @@ Duplicate `walkAuthPaths` and `walkClineProviderSettings` in `workos.ts` rather 
 ### 📋 Negative
 
 - **One more source file**: 8 source files vs. 7. Negligible in a codebase of this size.
-- **ADR-0006 becomes slightly outdated**: The dependency graph documented there changed. The refinement section added to ADR-0006 keeps the original decision traceable.
+- **ADR-0006 and ADR-0007 become slightly outdated**: The dependency graph documented there changed, and ADR-0007's circular-import driver assumed `workos.ts` imported traversal helpers from `auth.ts`. Refinement sections in ADR-0006 and ADR-0007 keep the original decisions traceable.
 
 ### 📋 Files changed
 

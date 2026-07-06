@@ -8,15 +8,19 @@ import { isRecord, stringValue } from "./utils.js";
 import { ENV_API_KEY, WORKOS_TOKEN_PREFIX } from "./env.js";
 import { walkAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./config-store.js";
 
+export {
+  defaultAuthPaths,
+  walkAuthPaths,
+  walkClineProviderSettings,
+  type AuthKeyOptions,
+} from "./config-store.js";
+
 /**
- * Extract a ClinePass API key from the Cline CLI's nested providers.json
- * structure: providers["cline-pass"].settings.apiKey or
- * providers["cline-pass"].settings.auth.accessToken
+ * Extract a static ClinePass API key from the Cline CLI nested providers.json
+ * structure: providers["cline-pass"].settings.apiKey
  *
- * Note: the auth.accessToken from the Cline CLI is a short-lived WorkOS OAuth
- * token — it may be expired. Only static apiKey values are returned from this
- * function; WorkOS access tokens are handled separately via
- * resolveClineAuthCredentials() + the OAuth refresh flow in oauth.ts.
+ * OAuth access tokens in settings.auth.accessToken are short-lived WorkOS
+ * tokens handled separately via resolveClineAuthCredentials() + oauth.ts.
  */
 function resolveClineProvidersKey(parsed: Record<string, unknown>): string | undefined {
   return walkClineProviderSettings(parsed, (settings) => stringValue(settings.apiKey));
