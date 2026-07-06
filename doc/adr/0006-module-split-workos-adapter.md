@@ -74,3 +74,22 @@ The handler tests were moved from `index.test.ts` to `error-handler.test.ts`, ca
 - **More files** — 6 source files replaced 1, plus 5 test files replaced 1. Developers need to navigate more files to understand the full codebase. Mitigated by clear naming and the dependency graph documented in `ARCHITECTURE.md`.
 - **Named-function type compatibility** — `pi.on("message_end", handleClinePassError)` relies on TypeScript structural typing for compatibility with pi's expected handler signature. If pi's `ExtensionHandler` type changes significantly, the function signature may need adjustment. The previous inline arrow function was immune to this because it was contextually typed.
 - `**credentialsFromWorkos` visibility\*\* — this small helper (3 field assignments) is exported from `workos.ts` because `oauth.ts`'s `login()` function needs it. It's marked `@internal` in JSDoc but is technically part of the module's public API. A future refactor could inline it into `refreshWorkosToken` and expose both paths (refresh + direct) through the same function.
+
+## Refinement (2026-07-01): Config-store extraction
+
+The original god-module split placed `walkAuthPaths` and `walkClineProviderSettings` in `src/auth.ts` because they were primarily used by the key-resolution logic there. However, this created a non-obvious cross-concern dependency: `src/workos.ts` imported generic file-walking utilities from a module named "auth" (`import { walkAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js"`). The module name didn't signal the dependency — a developer tracing WorkOS credential extraction would have to dig into `auth.ts` to discover these were not auth-specific.
+
+### Change
+
+A new `src/config-store.ts` module was created, owning the shared store-traversal boilerplate:
+
+- `walkAuthPaths<T>(options, extract)` — iterate auth file paths, JSON-parse, handle ENOENT suppression
+- `walkClineProviderSettings<T>(parsed, extract)` — navigate `providers["cline-pass"|"cline"].settings`
+- `AuthKeyOptions` interface — injectable I/O options (used by both `auth.ts` and `workos.ts`)
+- `defaultAuthPaths(home)` — default file path resolution
+
+Both `src/auth.ts` and `src/workos.ts` now import these utilities from `config-store.ts`. The `workos → auth` dependency is removed; `workos.ts` depends on `config-store.ts` (and `env.ts`, `utils.ts`) directly.
+
+### Rationale
+
+The extraction was motivated by this ADR's original assessment that the dependency graph was "clean" — on re-examination, the `workos → auth` edge was technically acyclic but semantically misleading. The counter-argument in the original split ("moving them would require either duplicating or extracting") was resolved by extracting. At 7 source modules the overhead of one additional file is negligible, and the module name `config-store.ts` communicates its purpose at a glance.
