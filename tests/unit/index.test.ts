@@ -65,9 +65,32 @@ describe("provider registration", () => {
       expect(models[i].cost).toEqual(MODELS[i].cost);
       expect(models[i].contextWindow).toBe(MODELS[i].contextWindow);
       expect(models[i].maxTokens).toBe(MODELS[i].maxTokens);
+      expect(models[i].thinkingLevelMap).toEqual(MODELS[i].thinkingLevelMap);
       expect(models[i].input).toEqual([...MODELS[i].input]);
       expect(Array.isArray(models[i].input)).toBe(true);
     }
+  });
+
+  it("propagates the off -> none thinking level mapping through registration", async () => {
+    let captured: { config: Record<string, unknown> } | undefined;
+
+    const fakePi = {
+      registerProvider(_name: string, config: Record<string, unknown>) {
+        captured = { config };
+      },
+      on(_event: string, _handler: unknown) {},
+    };
+
+    const mod = await import("../../src/index.js");
+    await mod.default(fakePi as never);
+
+    const models = captured!.config.models as Array<{
+      id: string;
+      thinkingLevelMap: Record<string, string | null>;
+    }>;
+    const glm = models.find((m) => m.id === "cline-pass/glm-5.2");
+    expect(glm).toBeDefined();
+    expect(glm!.thinkingLevelMap.off).toBe("none");
   });
 
   it("wires oauth with login, refreshToken, and getApiKey", async () => {
