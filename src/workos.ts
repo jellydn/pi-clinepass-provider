@@ -11,7 +11,7 @@
 import type { OAuthCredentials } from "@earendil-works/pi-ai";
 import { isRecord, stringValue } from "./utils.js";
 import { resolveApiBase, WORKOS_TOKEN_PREFIX } from "./env.js";
-import { walkAuthPaths, walkClineProviderSettings, type AuthKeyOptions } from "./auth.js";
+import { walkAuthPaths, type AuthKeyOptions } from "./auth.js";
 
 // Re-export for consumers that import from this module (tests)
 export { WORKOS_TOKEN_PREFIX };
@@ -155,12 +155,85 @@ export async function refreshWorkosToken(
 // ─── Credential Extraction ─────────────────────────────────────────────────
 
 /**
- * Extract WorkOS OAuth credentials (accessToken + refreshToken + expiresAt)
- * from the Cline CLI's providers.json.
+ * Resolve a credential's expiry timestamp.
  *
- * Looks for providers["cline-pass"].settings.auth or providers["cline"].settings.auth.
- * Returns undefined if no valid WorkOS credentials (both accessToken and
- * refreshToken) are found.
+ * Returns the field as-is when it's a finite number. For missing or invalid
+ * expiry, returns 0 (treats the credential as stale) rather than a synthetic
+ * future time — this ensures `pickFreshestAuth` does not rank unknown-expiry
+ * credentials above known ones, and `loginWithWorkosCredentials` refreshes
+ * before use. (Returning `Date.now() + lifetime` here would let a stale token
+ * with no expiry outrank a known-expired-but-refreshable one and skip refresh.)
+ */
+function resolveExpiresAt(expiresField: unknown): number {
+  if (typeof expiresField === "number" && Number.isFinite(expiresField)) {
+    return expiresField;
+  }
+  return 0;
+}
+
+/** Parse a Cline CLI `settings.auth` block into WorkOS credentials. */
+function extractWorkosAuthFromRecord(
+  auth: Record<string, unknown>,
+): ClineAuthCredentials | undefined {
+  const accessToken = stringValue(auth.accessToken);
+  const refreshToken = stringValue(auth.refreshToken);
+  if (!accessToken || !refreshToken || !isWorkosToken(accessToken)) return undefined;
+
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: resolveExpiresAt(auth.expiresAt),
+  };
+}
+
+/** Parse pi `auth.json` `clinepass` OAuth credentials. */
+function extractPiClinepassAuth(parsed: Record<string, unknown>): ClineAuthCredentials | undefined {
+  const cpField = parsed.clinepass;
+  if (!isRecord(cpField)) return undefined;
+
+  const accessToken = stringValue(cpField.access);
+  const refreshToken = stringValue(cpField.refresh);
+  if (!accessToken || !refreshToken || !isWorkosToken(accessToken)) return undefined;
+
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: resolveExpiresAt(cpField.expires),
+  };
+}
+
+/** Collect WorkOS credentials from every Cline CLI provider entry. */
+function collectClineProviderAuths(parsed: Record<string, unknown>): ClineAuthCredentials[] {
+  const providers = isRecord(parsed.providers) ? parsed.providers : undefined;
+  if (!providers) return [];
+
+  const results: ClineAuthCredentials[] = [];
+  for (const key of ["cline-pass", "cline"]) {
+    const provider = isRecord(providers[key]) ? providers[key] : undefined;
+    if (!provider) continue;
+    const settings = isRecord(provider.settings) ? provider.settings : undefined;
+    if (!settings) continue;
+    const auth = isRecord(settings.auth) ? settings.auth : undefined;
+    if (!auth) continue;
+    const cred = extractWorkosAuthFromRecord(auth);
+    if (cred) results.push(cred);
+  }
+  return results;
+}
+
+function pickFreshestAuth(candidates: ClineAuthCredentials[]): ClineAuthCredentials | undefined {
+  if (candidates.length === 0) return undefined;
+  return candidates.reduce((best, current) =>
+    current.expiresAt > best.expiresAt ? current : best,
+  );
+}
+
+/**
+ * Extract WorkOS OAuth credentials from all known auth stores.
+ *
+ * Scans `~/.cline/data/settings/providers.json` and `~/.pi/agent/auth.json`,
+ * collecting every WorkOS candidate (pi `clinepass` OAuth, `cline-pass`, and
+ * `cline` CLI providers) and returning the one with the latest `expiresAt`.
  *
  * Note: the accessToken may be expired — callers should refresh via
  * Cline's /api/v1/auth/refresh endpoint before use.
@@ -168,21 +241,14 @@ export async function refreshWorkosToken(
 export function resolveClineAuthCredentials(
   options: AuthKeyOptions = {},
 ): ClineAuthCredentials | undefined {
-  return walkAuthPaths(options, (parsed) =>
-    walkClineProviderSettings(parsed, (settings) => {
-      const auth = isRecord(settings.auth) ? settings.auth : undefined;
-      if (!auth) return undefined;
+  const candidates: ClineAuthCredentials[] = [];
 
-      const accessToken = stringValue(auth.accessToken);
-      const refreshToken = stringValue(auth.refreshToken);
-      if (!accessToken || !refreshToken) return undefined;
+  walkAuthPaths(options, (parsed) => {
+    const piAuth = extractPiClinepassAuth(parsed);
+    if (piAuth) candidates.push(piAuth);
+    candidates.push(...collectClineProviderAuths(parsed));
+    return undefined;
+  });
 
-      const expiresAt =
-        typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt)
-          ? auth.expiresAt
-          : Date.now() + WORKOS_TOKEN_LIFETIME_MS;
-
-      return { accessToken, refreshToken, expiresAt };
-    }),
-  );
+  return pickFreshestAuth(candidates);
 }

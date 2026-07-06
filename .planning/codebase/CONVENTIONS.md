@@ -1,116 +1,136 @@
-# CONVENTIONS.md — Code Conventions
+# Coding Conventions
 
-## Language
+**Analysis Date:** 2026-07-06
 
-- **TypeScript** with `strict: true`
-- **ESM** modules (`.js` extension in imports)
-- Target **ES2022**, no downlevel compilation needed
+## Naming Patterns
 
-## Module Organization
+**Files:**
 
-- Each source file has a single responsibility
-- Every file starts with a `@module clinepass-<name>` JSDoc block
-- Exported functions have JSDoc comments describing their purpose
-- Internal helpers (not exported) have no JSDoc by convention unless complex
-- All files under 250 lines; most are 50–150 lines
+- `kebab-case.ts` for source (`error-handler.ts`, `workos.ts`); one concern per file.
+- `<module>.test.ts` for tests, mirroring src 1:1.
+- `NNNN-kebab-case-title.md` for ADRs (zero-padded).
 
-## Type Guards (`src/utils.ts`)
+**Functions:**
 
-Four canonical type guards are used everywhere:
+- `camelCase` (`resolveApiKey`, `fetchRemoteModels`, `handleClinePassError`, `classifyClinePassError`).
+- Boolean predicates: `is*` / `*Value` (`isRecord`, `isWorkosToken`, `stringValue`, `numberValue`, `booleanValue`).
+- Resolvers/factories: `resolve*` / `credentialsFrom*` / `loginWith*` (`resolveApiBase`, `credentialsFromWorkos`, `loginWithManualApiKey`).
 
-```typescript
-isRecord(value: unknown): value is Record<string, unknown>
-stringValue(value: unknown): string | undefined
-numberValue(value: unknown): number | undefined
-booleanValue(value: unknown): boolean | undefined
-```
+**Variables:**
 
-These are the only way to safely extract typed values from `unknown` in the codebase. No `any` casts or `as` assertions are used for data extraction.
+- `camelCase` locals; `UPPER_SNAKE_CASE` for module-level constants (`DEFAULT_API_BASE`, `MODELS_FETCH_TIMEOUT_MS`, `WORKOS_REFRESH_MARGIN_MS`).
 
-### `numberValue` Specifics
-- Only finite numbers pass (`Number.isFinite`)
-- Strings are parsed via `Number(value)`; rejected if they have trailing non-numeric text (e.g., `"12px"` → `undefined`)
-- `Infinity`, `-Infinity`, `NaN` → `undefined`
-- Empty/whitespace-only strings → `undefined`
+**Types:**
 
-## Dependency Injection
+- `PascalCase` (`ModelConfig`, `AuthKeyOptions`, `ClineAuthCredentials`, `ThinkingLevelMap`).
+- Union string types for enums: `ClinePassErrorType = "not_subscribed" | "auth_expired" | ...`.
+- `Readonly<Record<K, V>>` for fixed-shape maps (`ThinkingLevelMap`).
 
-Every function that performs I/O accepts an options object with injectable alternatives:
+## Code Style
 
-```typescript
-export function resolveApiKey(
-  providedKey?: string,
-  options: AuthKeyOptions = {},
-): string | undefined { ... }
-```
+**Formatting:**
 
-Defaults use real implementations:
-- `options.env ?? process.env`
-- `options.readFile ?? ((p: string) => readFileSync(p, "utf-8"))`
-- `options.fileExists ?? ((p: string) => existsSync(p))`
-- `options.homeDir?.() ?? homedir()`
-- `options.fetch ?? globalThis.fetch`
+- Tool: oxfmt (`.oxfmtrc.json`, empty `ignorePatterns` — defaults). Run `npm run format`; check via `npm run format:check`.
+- Double quotes for strings. 2-space indentation. Trailing commas. Semis.
+
+**Linting:**
+
+- Tool: oxlint (`.oxlintrc.json`). Plugins: `typescript, unicorn, oxc, import, jest`. Categories: `correctness: error`, `suspicious: warn`.
+- Test override (`.oxlintrc.json` `overrides`): `unicorn/consistent-function-scoping: off` in `tests/**/*.test.ts` (allows local helper functions).
+- Env: `builtin: true`, `node: true`.
+- Currently 0 warnings / 0 errors across 19 files.
+
+**TypeScript:**
+
+- `strict: true`, `noImplicitAny`, strict null checks, no unchecked indexed access. `target: ES2022`, `module: ESNext`, `moduleResolution: bundler`. `skipLibCheck`, `esModuleInterop`, `forceConsistentCasingInFileNames`.
+
+## Import Organization
+
+**Order (observed in src modules):**
+
+1. Node built-ins (`node:fs`, `node:os`, `node:path`).
+2. External type imports (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`) — always `import type`.
+3. Internal modules (`./env.js`, `./utils.js`, `./workos.js`).
+
+**Path Aliases:**
+
+- None. All imports are relative, using `.js` extensions (ESM; `moduleResolution: bundler` resolves to the `.ts` source).
+
+**Notes:**
+
+- `import type` is used consistently for type-only imports (`ExtensionAPI`, `OAuthCredentials`, `OAuthLoginCallbacks`).
+- `workos.ts` re-exports `WORKOS_TOKEN_PREFIX` from `env.ts` for backward compatibility (ADR-0007).
 
 ## Error Handling
 
-### File Read Errors
-- `ENOENT` errors (file not found) are silently skipped — expected during normal operation
-- Other errors (corrupt JSON, permission denied) are logged via `console.warn()` with a `[clinepass]` prefix
-- File contents and resolved keys are **never** logged
+**Patterns:**
 
-### Network Errors
-- `fetchRemoteModels()` catches all errors and returns `undefined` — callers fall back to static data
-- `refreshWorkosToken()` throws on timeout (`DOMException` with `name === "AbortError"`) and non-OK responses with descriptive messages
+- **Pure classification:** `classifyClinePassError` (no I/O) returns `{ type, message }`; the handler in `error-handler.ts` owns delivery.
+- **Graceful fallback:** `fetchRemoteModels` returns `undefined` on any error → `resolveModels` falls back to static `MODELS`. Never throws.
+- **Typed throws:** `refreshWorkosToken` distinguishes `AbortError` (timeout → friendly message with `cause`) from other errors; non-OK responses throw with status + body + recovery hint. `loginWithManualApiKey` throws `"No ClinePass API key provided"` on empty input.
+- **ENOENT suppression:** `walkAuthPaths` distinguishes "file absent" (silently skip) from "file corrupt" (`console.warn` with path + message, never contents).
+- **No silent swallowing:** catch blocks either re-throw with context, return a fallback, or warn. The only bare `catch {}` is in `fetchRemoteModels` where `undefined` is the documented failure signal.
 
-### User-Facing Errors
-- ClinePass API errors (403, 401, 429) are classified via `classifyClinePassError()` and surfaced through pi's UI notification system
-- Non-ClinePass errors are silently ignored (early return in `handleClinePassError`)
+## Logging
 
-## Naming Conventions
+**Framework:** None — `console.warn` / `console.error` directly.
 
-| Category | Convention | Examples |
-|----------|-----------|----------|
-| Functions | camelCase | `resolveApiKey`, `fetchRemoteModels` |
-| Types/Interfaces | PascalCase | `ModelConfig`, `AuthKeyOptions` |
-| Constants | SCREAMING_CASE | `DEFAULT_API_BASE`, `PROVIDER_NAME` |
-| Files | kebab-case | `error-handler.ts` |
-| Test files | `<name>.test.ts` | `auth.test.ts` |
-| Test describes | function name | `describe("resolveApiKey", ...)` |
-| Module tags | `clinepass-<module>` | `@module clinepass-auth` |
+**Patterns:**
 
-## Imports
-
-- Node built-ins first (`node:fs`, `node:os`, `node:path`)
-- pi SDK types second (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`)
-- Internal modules last (`./env.js`, `./utils.js`)
-- Use `.js` extension for internal imports (ESM convention)
-- No barrel files — direct imports only
+- Prefix `[clinepass]` on all operator-facing logs.
+- Security: never log file contents or resolved API keys. Auth-file warnings include only the path and the error message.
+- Warn on recoverable degradation (corrupt auth file, short API key, WorkOS auto-login failure); error on the no-UI fallback path in `handleClinePassError`.
 
 ## Comments
 
-- Source comments use `//` with a space after the slashes
-- Section dividers: `// ─── Section Name ─────────────────────────────────────`
-- JSDoc for all exported functions and interfaces
-- Inline comments explain **why**, not **what**
+**When to Comment:**
 
-## Formatting
+- Module-level: every `src/*.ts` opens with a JSDoc `@module clinepass-<name>` block describing the concern.
+- "Why" comments for non-obvious decisions: the `granttype` (no underscore) Cline quirk, the `workos:` prefix enforcement, ENOENT vs corrupt-file distinction, the `String.fromCharCode` regex trick to dodge a lint rule.
+- Section dividers: `// ─── Section Name ───────────` banners organize larger files (`models.ts`, `workos.ts`, `index.ts`).
 
-- **Formatter**: oxfmt (Biome-compatible)
-- No manual formatting decisions — oxfmt handles everything
-- CI checks formatting with `npm run format:check`
+**JSDoc/TSDoc:**
 
-## Linting
+- All exports have JSDoc. Public functions document `@param` / `@returns`. Internal helpers marked `@internal` (e.g. `credentialsFromWorkos`).
+- Inline doc on `pi.registerProvider` call site explains the `api: "openai-completions"` choice and the `compat`/`thinkingFormat` future-extension point.
 
-- **Linter**: oxlint with TypeScript + unicorn + oxc + import + jest plugins
-- `correctness` rules are errors
-- `suspicious` rules are warnings
-- `unicorn/consistent-function-scoping` disabled in test files (`.oxlintrc.json` override)
-- Pre-commit hooks via `prek` enforce lint + format + basic file hygiene
+## Function Design
 
-## Version Control
+**Size:** Files target < 300 lines (CONTRIBUTING.md). `models.ts` (412 lines) is the exception — see CONCERNS.md. Functions are short and single-purpose; deep modules with simple interfaces are preferred (ADR-0006).
 
-- Main branch: `main`
-- Feature branches: `feat/<name>`
-- Commits use conventional commit format: `type(scope): message`
-- Releases via `bumpp` (auto-bumps version, commits, tags, pushes)
-- No pre-commit hook enforcement on commits (use `--no-verify` when needed)
+**Parameters:**
+
+- Injectable I/O via trailing options object: `AuthKeyOptions`, `RemoteModelsOptions`, `WorkosRefreshOptions`. Options default to real implementations (`process.env`, `readFileSync`, `globalThis.fetch`, `homedir()`).
+- Higher-order extractors: `walkAuthPaths(options, extract)` and `walkClineProviderSettings(parsed, extract)` take a callback, eliminating duplication between static-key and WorkOS paths.
+
+**Return Values:**
+
+- `undefined` as a "not found / failure" signal (`resolveApiKey`, `fetchRemoteModels`, `resolveClineAuthCredentials`). Callers fall back, never throw on `undefined`.
+- Readonly returns: `MODELS` is `readonly ModelConfig[]`; `resolveModels` returns `readonly ModelConfig[]`. Tuples `input: readonly ["text"]` are spread to mutable arrays at the registration boundary in `index.ts`.
+
+## Module Design
+
+**Exports:** Named exports for all functions/types/constants; the entry point (`src/index.ts`) is the sole `export default`. No barrel files — `index.ts` and `oauth.ts` import directly from the module that owns each concern (ADR-0006).
+
+**Module structure (per CONTRIBUTING.md):**
+
+1. `@module` JSDoc header.
+2. Imports (node → external → internal).
+3. Constants and types.
+4. Private helpers.
+5. Exported functions.
+
+**Concern ownership:**
+
+- `utils.ts` — type guards (leaf).
+- `env.ts` — constants + env helpers.
+- `models.ts` — model catalog + discovery.
+- `auth.ts` — static key resolution + shared file-walking.
+- `workos.ts` — all WorkOS protocol knowledge.
+- `oauth.ts` — `/login` orchestration only (no protocol details).
+- `errors.ts` — pure classification.
+- `error-handler.ts` — filter/classify/deliver pipeline.
+
+---
+
+_Convention analysis: 2026-07-06_

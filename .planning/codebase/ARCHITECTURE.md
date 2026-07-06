@@ -1,133 +1,158 @@
-# ARCHITECTURE.md — System Architecture
+# Architecture
 
-## Pattern: Layered + Dependency Injection
+**Analysis Date:** 2026-07-06
 
-The codebase follows a **layered architecture with dependency injection (DI)** for testability. Every I/O operation (file reads, environment variables, HTTP fetches, home directory) is parameterized through options objects rather than called directly. This allows unit tests to inject mocks without touching the filesystem or network.
+## Pattern Overview
 
-## Module Map
+**Overall:** pi extension module with dependency-injected pure-logic core (IoC separation).
 
-```
-src/
-├── index.ts          # Extension entry point — wires everything together
-├── utils.ts          # Shared type guards (isRecord, stringValue, numberValue, booleanValue)
-├── env.ts            # Constants, API base resolution, key sanitization, URL builder
-├── errors.ts         # Error classification (403→subscription, 401→auth, 429→rate limit)
-├── error-handler.ts  # Error surface — filter → classify → deliver pipeline
-├── models.ts         # Static model catalog + dynamic model discovery with fallback
-├── auth.ts           # API key resolution (env var → Cline CLI → pi auth.json)
-├── workos.ts         # WorkOS OAuth — credential extraction, token refresh
-└── oauth.ts          # /login flow — two paths (WorkOS auto-detect, manual paste)
-```
+**Key Characteristics:**
 
-## Layer Dependencies (top-down)
+- Single entry point (default export) receives pi's `ExtensionAPI` and registers one provider.
+- Pure logic separated from I/O via injectable options objects (`AuthKeyOptions`, `RemoteModelsOptions`, `WorkosRefreshOptions`) — every function is testable without touching the filesystem or network.
+- Deep modules with simple interfaces: each module owns one concern; complexity hides behind a single exported function (e.g. `handleClinePassError`, `refreshWorkosToken`).
+- No circular dependencies. Dependency graph flows one direction (see Layers).
+- No build step — pi loads `.ts` directly; `tsconfig.json` is `noEmit`.
 
-```
-index.ts
-  ├── env.ts          (resolveApiBase, PROVIDER_NAME, ENV_API_KEY)
-  ├── auth.ts         (resolveApiKey)
-  │     ├── utils.ts  (isRecord, stringValue)
-  │     └── env.ts    (ENV_API_KEY)
-  ├── models.ts       (resolveModels)
-  │     ├── utils.ts  (isRecord, stringValue, numberValue, booleanValue)
-  │     └── env.ts    (resolveApiBase)
-  ├── error-handler.ts (handleClinePassError)
-  │     ├── errors.ts (classifyClinePassError)
-  │     └── env.ts    (PROVIDER_NAME)
-  └── oauth.ts        (login, refreshToken, getApiKey)
-        ├── env.ts    (sanitizeApiKey)
-        └── workos.ts (resolveClineAuthCredentials, refreshWorkosToken, ...)
-              ├── utils.ts  (isRecord, stringValue)
-              ├── env.ts    (resolveApiBase)
-              └── auth.ts   (defaultAuthPaths, walkClineProviderSettings)
-```
+## Layers
 
-**Notable:** `auth.ts` exports `walkClineProviderSettings` which `workos.ts` imports — the shared traversal helper eliminates duplicated provider iteration between the two modules. No circular dependencies exist.
+**Entry / Wiring (`src/index.ts`):**
 
-## Three-Stage Error Pipeline
+- Purpose: Bootstraps the extension — resolves API base + key, discovers models, calls `pi.registerProvider`, subscribes to `message_end`.
+- Location: `src/index.ts` (80 lines)
+- Contains: The async default export; no business logic.
+- Depends on: `env.ts`, `auth.ts`, `models.ts`, `error-handler.ts`, `oauth.ts`.
+- Used by: pi runtime (loads the module).
 
-1. **Filter** (`error-handler.ts`) — checks `stopReason === "error"`, `errorMessage` present, `provider === "clinepass"`
-2. **Classify** (`errors.ts`) — pattern-matches the error message against known ClinePass failures
-3. **Deliver** (`error-handler.ts`) — `ctx.ui.notify()` when UI is available, `console.error()` fallback
+**Environment & Constants (`src/env.ts`):**
 
-## Two Authentication Paths
+- Purpose: Shared constants (`DEFAULT_API_BASE`, `ENV_API_KEY`, `PROVIDER_NAME`, `WORKOS_TOKEN_PREFIX`) and helpers (`resolveApiBase`, `sanitizeApiKey`, `buildEndpointUrl`).
+- Location: `src/env.ts` (58 lines)
+- Depends on: `utils.ts`.
 
-### Path 1: WorkOS OAuth (automatic)
-- Credentials stored by Cline CLI at `~/.cline/data/settings/providers.json`
-- Extracted by `resolveClineAuthCredentials()` in `workos.ts`
-- Short-lived (~1 hour), auto-refreshed via `/api/v1/auth/refresh`
-- Detected by `workos:` token prefix
+**Type Guards (`src/utils.ts`):**
 
-### Path 2: Static API Key (manual)
-- Created at `app.cline.bot → Settings → API Keys`
-- Long-lived (treated as 10-year expiry)
-- Pasted during `/login` flow
-- Stored in pi's `auth.json` or set via `CLINE_API_KEY` env var
+- Purpose: Pure `unknown` → typed guards (`isRecord`, `stringValue`, `numberValue`, `booleanValue`) used at every I/O boundary.
+- Location: `src/utils.ts` (27 lines) — leaf dependency, no src/ imports.
 
-## Key Resolution Priority
+**Models (`src/models.ts`):**
 
-`resolveApiKey()` checks in order:
-1. Explicitly provided key (function parameter)
-2. `CLINE_API_KEY` environment variable
-3. `~/.cline/data/settings/providers.json` — Cline CLI nested format (static `apiKey` only; skips WorkOS `auth.accessToken`)
-4. `~/.pi/agent/auth.json` — pi OAuth format (direct `apiKey`, string `clinepass`, or object `clinepass.access`; skips `workos:`-prefixed values)
+- Purpose: Static `MODELS` catalog + dynamic discovery (`fetchRemoteModels`, `resolveModels`). Per-model `thinkingLevelMap` maps pi's 6 thinking levels to ClinePass `reasoning_effort`.
+- Location: `src/models.ts` (412 lines — largest module)
+- Depends on: `env.ts`, `utils.ts`.
 
-## Model Resolution
+**Auth (`src/auth.ts`):**
 
-`resolveModels()` tries the remote API first, falls back to the static `MODELS` array:
-1. If an API key is available, calls `fetchRemoteModels()` (5-second timeout)
-2. On any error (network, 404, parse failure, empty list), returns static `MODELS`
-3. Remote models are filtered to only `cline-pass/`-prefixed IDs
-4. Missing fields in remote entries fall back to static model values
+- Purpose: Static API key resolution + shared file-walking helpers (`walkAuthPaths`, `walkClineProviderSettings`) reused by `workos.ts`.
+- Location: `src/auth.ts` (166 lines)
+- Depends on: `env.ts`, `utils.ts`.
 
-## OAuth login Flow
+**WorkOS Protocol (`src/workos.ts`):**
 
-`login()` has two branches:
-1. **WorkOS auto-detect**: if `resolveClineAuthCredentials()` returns credentials, use them (refresh if expired). No browser navigation needed.
-2. **Manual paste**: opens Cline dashboard, prompts user to paste API key. Sanitizes input (terminal paste wrappers, control characters, whitespace).
+- Purpose: Sole owner of WorkOS-specific knowledge — token prefix detection, credential extraction, HTTP refresh protocol, credential construction, constants.
+- Location: `src/workos.ts` (247 lines)
+- Depends on: `env.ts`, `utils.ts`, `auth.ts`.
 
-## Dependency Injection Pattern
+**OAuth Orchestration (`src/oauth.ts`):**
 
-Every module that does I/O accepts an options object:
+- Purpose: Pure orchestration of the `/login` flow — WorkOS auto-login first, manual API-key paste fallback; `refreshToken` dispatches WorkOS vs static.
+- Location: `src/oauth.ts` (141 lines)
+- Depends on: `env.ts`, `workos.ts`. No HTTP/protocol details leak here (ADR-0006).
 
-```typescript
-// auth.ts
-export interface AuthKeyOptions {
-  env?: Record<string, string | undefined>;
-  authPaths?: readonly string[];
-  homeDir?: () => string;
-  readFile?: (path: string) => string;
-  fileExists?: (path: string) => boolean;
-}
+**Errors (`src/errors.ts`):**
 
-// models.ts
-export interface RemoteModelsOptions {
-  apiBase?: string;
-  apiKey?: string;
-  fetch?: typeof globalThis.fetch;
-  timeoutMs?: number;
-}
+- Purpose: Pure error classification (`classifyClinePassError`) + friendly message table. No src/ dependencies.
+- Location: `src/errors.ts` (53 lines)
 
-// workos.ts
-export interface WorkosRefreshOptions {
-  fetch?: typeof globalThis.fetch;
-  apiBase?: string;
-}
-```
+**Error Handler (`src/error-handler.ts`):**
 
-Defaults use the real implementations (`process.env`, `readFileSync`, `existsSync`, `homedir()`, `globalThis.fetch`).
+- Purpose: Owns the error surface pipeline — Filter → Classify (delegates to `errors.ts`) → Deliver (`ui.notify` or `console.error`).
+- Location: `src/error-handler.ts` (50 lines)
+- Depends on: `errors.ts`, `env.ts`.
 
-## File Sizes
+**Dependency graph:** `utils → env → {models, auth, workos → auth}`, with `errors` and `error-handler` as downstream consumers. `index.ts` and `oauth.ts` are the composition roots.
 
-| File | Lines | Responsibility |
-|------|-------|---------------|
-| `src/models.ts` | 223 | Model catalog + dynamic discovery |
-| `src/oauth.ts` | 115 | Login + refresh dispatch |
-| `src/auth.ts` | 150 | API key resolution |
-| `src/workos.ts` | 189 | WorkOS token extraction + refresh |
-| `src/index.ts` | 67 | Extension entry point |
-| `src/env.ts` | 63 | Constants + sanitization + URL builder |
-| `src/errors.ts` | 68 | Error classification |
-| `src/error-handler.ts` | 53 | Error pipeline |
-| `src/utils.ts` | 27 | Type guards |
+## Data Flow
 
-All files are well under the 1,000-line threshold. The largest file (`models.ts`) is half static data (model definitions).
+**Extension startup:**
+
+1. pi loads `src/index.ts`, calls the default export with `ExtensionAPI`.
+2. `resolveApiBase()` reads `CLINE_API_BASE` (or default).
+3. `resolveApiKey()` resolves the key (provided → env → auth files).
+4. `resolveModels(apiKey, {apiBase})` fetches `/api/v1/models` (5s timeout); on any failure falls back to static `MODELS`.
+5. `pi.registerProvider("clinepass", { baseUrl, apiKey: "$CLINE_API_KEY", api: "openai-completions", authHeader, oauth, models })` — pi now owns request streaming.
+6. `pi.on("message_end", handleClinePassError)` — error handler subscribed.
+
+**Chat request (runtime, owned by pi):**
+
+1. User invokes a model `clinepass/cline-pass/<slug>`.
+2. pi uses `openai-completions` to POST `${apiBase}/api/v1/chat/completions` with `Authorization: Bearer <resolved key>`, translating pi's thinking level via the model's `thinkingLevelMap`.
+3. SSE streamed back through pi; on `message_end` with `stopReason: "error"`, `handleClinePassError` filters for the `clinepass` provider, classifies, and notifies the user.
+
+**`/login` flow:**
+
+1. `login(callbacks)` → `resolveClineAuthCredentials()` scans both auth stores for WorkOS creds, picks the freshest by `expiresAt`.
+2. If found and not within 5-min refresh margin → return as-is. If near/expired → `refreshWorkosToken()` POSTs `/api/v1/auth/refresh`.
+3. If WorkOS refresh fails (or no creds) → `loginWithManualApiKey` opens the dashboard URL and prompts for a paste; sanitizes; warns if < 20 chars.
+4. Returns `OAuthCredentials`; pi persists to `~/.pi/agent/auth.json`.
+
+**`refreshToken` (pi-driven, on token expiry):**
+
+1. Inspect `credentials.access` for `workos:` prefix.
+2. WorkOS → `refreshWorkosToken` (HTTP, prefix enforcement, rotation). Static → `credentialsFromApiKey` (no-op, 10-year expiry).
+
+**State Management:**
+
+- No in-extension state beyond the registered models. pi owns credential persistence and request state. The extension is stateless after registration.
+
+## Key Abstractions
+
+**`ModelConfig` + `thinkingLevelMap`:**
+
+- Purpose: Declares a model's capabilities and the explicit mapping of pi's 6 thinking levels (`off|minimal|low|medium|high|xhigh`) to ClinePass `reasoning_effort` strings, or `null` (unsupported).
+- Examples: `src/models.ts` (10 static models + `DEFAULT_THINKING_LEVEL_MAP` / `NO_THINKING_MAP` for remote models).
+- Pattern: Readonly `Record<ThinkingLevel, string|null>` — every model must declare all six levels (no implicit defaults). `off` maps to `"none"` for models that can disable reasoning; `null` for always-reasoning models (Kimi).
+
+**Injectable I/O options:**
+
+- Purpose: Decouple pure logic from `node:fs`, `process.env`, `globalThis.fetch` for testing.
+- Examples: `AuthKeyOptions` (`src/auth.ts`), `RemoteModelsOptions` (`src/models.ts`), `WorkosRefreshOptions` (`src/workos.ts`).
+- Pattern: Optional functional fields defaulting to real implementations; tests pass mocks.
+
+**`walkAuthPaths` / `walkClineProviderSettings`:**
+
+- Purpose: Shared file-walking + provider-entry iteration used by both static-key (`auth.ts`) and WorkOS (`workos.ts`) extraction.
+- Examples: `src/auth.ts`.
+- Pattern: Higher-order extractor — caller supplies a `(parsed) => T | undefined` callback; helper handles try/catch, ENOENT suppression, and warning on corrupt files.
+
+## Entry Points
+
+**Default export (`src/index.ts`):**
+
+- Location: `src/index.ts`
+- Triggers: pi runtime loads the extension (via `pi.extensions` in `package.json` or `-e` flag).
+- Responsibilities: Resolve config, discover models, register provider, subscribe error handler. Declared in `package.json` `main`/`types`/`pi.extensions`.
+
+## Error Handling
+
+**Strategy:** Three-stage pipeline owned by `error-handler.ts`: Filter → Classify → Deliver.
+
+**Patterns:**
+
+- **Filter:** `handleClinePassError` early-returns on non-error `stopReason`, missing `errorMessage`, or non-`clinepass` provider. Provider resolved as `msg.provider ?? ctx.model?.provider`.
+- **Classify:** `classifyClinePassError` (pure, `errors.ts`) lowercases the message and matches patterns → `not_subscribed` (403/forbidden) | `auth_expired` (401/unauthorized) | `rate_limited` (429) | `unknown`. Each maps to an actionable user message in `CLINEPASS_ERROR_MESSAGES`.
+- **Deliver:** `ctx.ui.notify(msg, "error")` when `ctx.hasUI`, else `console.error("[clinepass] ...")`.
+- **Network resilience:** `fetchRemoteModels` and `refreshWorkosToken` swallow/translate errors — model discovery falls back to static; refresh throws typed messages with recovery hints ("try `cline auth` or a static API key"). Abort timeouts distinguished from other errors.
+- **Auth-file reading:** ENOENT suppressed silently; corrupt files warned via `console.warn` (never logging contents).
+
+## Cross-Cutting Concerns
+
+**Logging:** `console.warn`/`console.error` with `[clinepass]` prefix. No logger framework. Security-conscious — never logs file contents or resolved keys.
+
+**Validation:** `unknown` at every I/O boundary (JSON parse, API responses), guarded by `isRecord`/`stringValue`/`numberValue`/`booleanValue` before use. Strict TypeScript (`strict: true`, no unchecked indexed access). `tests/type/contract.ts` is a compile-time assertion against pi's `ExtensionAPI` contract.
+
+**Authentication:** Dual auth (WorkOS OAuth + static key) with priority chain (provided → env → files). WorkOS tokens identified by `workos:` prefix (constant in `env.ts`, re-exported by `workos.ts` per ADR-0007). Token sanitization strips terminal paste artifacts.
+
+---
+
+_Architecture analysis: 2026-07-06_

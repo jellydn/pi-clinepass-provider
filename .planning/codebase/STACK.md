@@ -1,81 +1,88 @@
-# STACK.md — Technology Stack
+# Technology Stack
 
-## Language & Runtime
+**Analysis Date:** 2026-07-06
 
-| Component | Version / Detail |
-|-----------|-----------------|
-| **Language** | TypeScript 6.x |
-| **Runtime** | Node.js ≥ 22 |
-| **Module system** | ESM (`"type": "module"`) |
-| **Target** | ES2022 |
-| **Module resolution** | `bundler` |
-| **Type checking** | `strict: true`, `noEmit: true`, `skipLibCheck: true` |
+## Languages
 
-No build step — pi loads `.ts` source directly. `tsconfig.json` uses `noEmit: true` (type checking only).
+**Primary:**
 
-## Core Dependencies
+- TypeScript `^6.0.3` — all source (`src/*.ts`) and tests (`tests/**/*.ts`). Strict mode enabled.
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `@earendil-works/pi-ai` | `^0.80.2` | pi AI SDK — `OAuthCredentials`, `OAuthLoginCallbacks` types |
-| `@earendil-works/pi-coding-agent` | `^0.80.2` | pi coding agent SDK — `ExtensionAPI` entry point |
+**Secondary:**
 
-Both are **peer dependencies** (the pi runtime provides them) and **dev dependencies** (for local development and type checking).
+- Bash — `tests/e2e/smoke.sh` E2E smoke-test driver (real API calls via `pi` + `curl`).
 
-No runtime dependencies beyond Node.js built-ins (`node:fs`, `node:os`, `node:path`).
+## Runtime
 
-## Development Dependencies
+**Environment:**
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `vitest` | `^4.1.5` | Test runner and assertion library |
-| `typescript` | `^6.0.3` | TypeScript compiler (type checking only) |
-| `oxlint` | `^1.71.0` | Linter (ESLint-compatible, with TypeScript + unicorn + import + jest plugins) |
-| `oxfmt` | `^0.56.0` | Formatter (Biome-compatible) |
-| `bumpp` | `^11.1.0` | Automated version bumping + git tag + push |
-| `np` | `^11.2.1` | npm publish safety checks (clean tree, tests pass) |
-| `@types/node` | `^24.0.0` | Node.js type definitions |
+- Node.js `>= 22` (enforced via `package.json` `engines`). CI matrix tests Node 22 (min supported) and Node 24.
 
-## Tooling Configuration
+**Package Manager:**
 
-| Tool | Config File | Notes |
-|------|-----------|-------|
-| TypeScript | `tsconfig.json` | Strict mode, ES2022 target, bundler module resolution |
-| Linter | `.oxlintrc.json` | Typescript + unicorn + oxc + import + jest plugins; `correctness: error`, `suspicious: warn`; `unicorn/consistent-function-scoping` disabled in tests |
-| Formatter | `.oxfmtrc.json` | Minimal config (no ignore patterns) |
-| Tests | `vitest.config.ts` | Includes `tests/**/*.test.ts` only |
-| Pre-commit | `prek.toml` | Trailing whitespace, EOF, large files, JSON/TOML/YAML validation, oxlint, oxfmt |
+- npm (lockfile: `package-lock.json`, committed). `npm ci` used in CI.
+- No pnpm/yarn support configured (`np` release config disables both).
 
-## Scripts
+## Frameworks
 
-| Script | Command | Purpose |
-|--------|---------|---------|
-| `test` | `vitest run` | Run all unit tests |
-| `test:watch` | `vitest` | Watch mode for development |
-| `test:e2e` | `bash tests/e2e/smoke.sh` | E2E smoke test (requires `CLINE_API_KEY` + `pi`) |
-| `lint` | `oxlint --config .oxlintrc.json src/ tests/` | Lint all source and test files |
-| `format` | `oxfmt --write src/ tests/` | Format in-place |
-| `format:check` | `oxfmt --check src/ tests/` | Check formatting without writing |
-| `typecheck` | `tsc` | TypeScript type checking (no emit) |
-| `release` | `bumpp --commit --push --tag` | Bump version (interactive prompt) |
-| `release:patch` | `bumpp --commit --push --tag patch` | Bump patch version |
-| `release:minor` | `bumpp --commit --push --tag minor` | Bump minor version |
-| `release:major` | `bumpp --commit --push --tag major` | Bump major version |
-| `pub` | `npm publish` | Publish to npm |
+**Core:**
 
-## npm Publishing
+- `@earendil-works/pi-ai` `^0.80.2` — pi's AI types (`OAuthCredentials`, `OAuthLoginCallbacks`). Peer + dev dependency.
+- `@earendil-works/pi-coding-agent` `^0.80.2` — pi's `ExtensionAPI` contract that the extension's default export receives. Peer + dev dependency.
 
-| Field | Value |
-|-------|-------|
-| Package name | `pi-clinepass-provider` |
-| Version | `1.0.1` |
-| License | MIT |
-| Entry point | `src/index.ts` |
-| Included files | `src/`, `tests/`, `CHANGELOG.md`, `README.md`, `LICENSE` |
-| Excluded (via `.npmignore`) | Source maps, build artifacts, `.git/`, `.github/`, `.planning/`, `doc/`, editor files |
-| Required engines | Node ≥ 22 |
-| Publish tool | `np` (with release draft, test script, main branch enforce) |
+**Testing:**
 
-## Packages Provided
+- Vitest `^4.1.5` — unit test runner. Config: `vitest.config.ts` (glob `tests/**/*.test.ts`).
 
-The `"pi"` field in `package.json` registers `./src/index.ts` as a pi extension entry point.
+**Build/Dev:**
+
+- TypeScript `^6.0.3` — type checking only. `tsconfig.json` has `noEmit: true`; **no build step**. pi loads `.ts` source directly.
+- oxlint `^1.71.0` — linter (Rust-based, oxc). Config: `.oxlintrc.json`.
+- oxfmt `^0.57.0` — formatter. Config: `.oxfmtrc.json`.
+- prek — pre-commit hook runner. Config: `prek.toml` (trailing-whitespace, eof-fixer, large-files, json/toml/yaml checks + local oxlint/oxfmt hooks).
+- bumpp `^11.1.0` — version bumping for releases (`npm run release:*`).
+- np `^11.2.1` — npm publish safety wrapper (`npm run pub`).
+- all-contributors-cli `^6.26.1` — contributor management.
+
+## Key Dependencies
+
+**Critical:**
+
+- `@earendil-works/pi-coding-agent` — defines `ExtensionAPI`, the contract the entry point implements. A breaking change here fails `tests/type/contract.ts` at compile time.
+- `@earendil-works/pi-ai` — defines `OAuthCredentials` / `OAuthLoginCallbacks` used by `src/oauth.ts` and `src/workos.ts`.
+
+**Infrastructure:**
+
+- No runtime dependencies. `package.json` has no `dependencies` field — everything is `devDependencies` or `peerDependencies`. The published package is pure TypeScript loaded by pi.
+
+## Configuration
+
+**Environment:**
+
+- `CLINE_API_KEY` — ClinePass API key (static). Highest-priority auth source. Referenced via sigil `$CLINE_API_KEY` in `pi.registerProvider`.
+- `CLINE_API_BASE` — overrides the API endpoint (default `https://api.cline.bot`). Normalized in `src/env.ts` `resolveApiBase` (trim + strip trailing slashes).
+- Auth files (no env var): `~/.cline/data/settings/providers.json` (Cline CLI), `~/.pi/agent/auth.json` (pi OAuth store).
+
+**Build:**
+
+- `tsconfig.json` — `target: ES2022`, `module: ESNext`, `moduleResolution: bundler`, `strict: true`, `noEmit: true`, `lib: [ES2022]`, `types: [node]`. Includes `src/**/*.ts` and `tests/**/*.ts`.
+- `vitest.config.ts` — `test.include: ["tests/**/*.test.ts"]`.
+- `.oxlintrc.json` — plugins: `typescript, unicorn, oxc, import, jest`; `correctness: error`, `suspicious: warn`; test override disables `unicorn/consistent-function-scoping`.
+- `.oxfmtrc.json` — empty `ignorePatterns` (default formatting).
+- `prek.toml` — builtin hooks + local `oxlint` / `oxfmt --check` hooks on JS/TS/JSON/MD/YAML.
+- `renovate.json` — automated dependency updates.
+- `package.json` `pi.extensions: ["./src/index.ts"]` — tells pi where the entry point is.
+
+## Platform Requirements
+
+**Development:**
+
+- Node.js >= 22, npm >= 10. `mise` recommended for `prek` (`mise install prek`). Run `prek install` after cloning.
+
+**Production:**
+
+- Distributed as an npm package (`pi-clinepass-provider`) consumed by the pi coding agent. No server/deployment — it's a client-side extension loaded into pi's process. Published via `npm run release:*` + `npm run pub`.
+
+---
+
+_Stack analysis: 2026-07-06_
