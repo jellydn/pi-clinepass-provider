@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **WorkOS login refresh hardening** — pick the freshest credentials across `cline-pass`, `cline`, and pi `auth.json`; fall back to manual API-key paste when subscription refresh fails ([#16](https://github.com/jellydn/pi-clinepass-provider/issues/16))
+
 ## [1.0.6] — 2026-07-06
 
 ### Fixed

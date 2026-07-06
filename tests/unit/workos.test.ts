@@ -194,7 +194,75 @@ describe("resolveClineAuthCredentials", () => {
     expect(creds?.refreshToken).toBe("rt_def456");
   });
 
-  it("prefers cline-pass credentials over cline", () => {
+  it("extracts WorkOS credentials from pi auth.json clinepass OAuth", () => {
+    const readFile = () =>
+      JSON.stringify({
+        clinepass: {
+          type: "oauth",
+          access: "workos:pi_token",
+          refresh: "rt_pi",
+          expires: 9_000,
+        },
+      });
+    const fileExists = () => true;
+    const creds = resolveClineAuthCredentials({ readFile, fileExists });
+    expect(creds).toEqual({
+      accessToken: "workos:pi_token",
+      refreshToken: "rt_pi",
+      expiresAt: 9_000,
+    });
+  });
+
+  it("picks freshest credentials across providers.json and pi auth.json", () => {
+    const providersJson = JSON.stringify({
+      providers: {
+        "cline-pass": {
+          settings: {
+            auth: {
+              accessToken: "workos:stale_token",
+              refreshToken: "rt_stale",
+              expiresAt: 1_000,
+            },
+          },
+        },
+      },
+    });
+    const piAuthJson = JSON.stringify({
+      clinepass: {
+        type: "oauth",
+        access: "workos:fresh_token",
+        refresh: "rt_fresh",
+        expires: 9_000,
+      },
+    });
+    const readFile = (path: string) =>
+      path.includes("providers.json") ? providersJson : piAuthJson;
+    const fileExists = () => true;
+    const creds = resolveClineAuthCredentials({
+      readFile,
+      fileExists,
+      authPaths: ["/home/.cline/data/settings/providers.json", "/home/.pi/agent/auth.json"],
+    });
+    expect(creds?.accessToken).toBe("workos:fresh_token");
+    expect(creds?.refreshToken).toBe("rt_fresh");
+    expect(creds?.expiresAt).toBe(9_000);
+  });
+
+  it("ignores non-WorkOS clinepass entries in pi auth.json", () => {
+    const readFile = () =>
+      JSON.stringify({
+        clinepass: {
+          type: "oauth",
+          access: "cline_static_key_abcdefghij",
+          refresh: "cline_static_key_abcdefghij",
+          expires: 9_000,
+        },
+      });
+    const fileExists = () => true;
+    expect(resolveClineAuthCredentials({ readFile, fileExists })).toBeUndefined();
+  });
+
+  it("picks freshest credentials across cline-pass and cline", () => {
     const readFile = () =>
       JSON.stringify({
         providers: {
@@ -216,8 +284,9 @@ describe("resolveClineAuthCredentials", () => {
       });
     const fileExists = () => true;
     const creds = resolveClineAuthCredentials({ readFile, fileExists });
-    expect(creds?.accessToken).toBe("workos:pass_token");
-    expect(creds?.refreshToken).toBe("rt_pass");
+    expect(creds?.accessToken).toBe("workos:cline_token");
+    expect(creds?.refreshToken).toBe("rt_cline");
+    expect(creds?.expiresAt).toBe(2000);
   });
 
   it("returns undefined when no auth field exists", () => {
