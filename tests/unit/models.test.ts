@@ -56,10 +56,9 @@ describe("MODELS", () => {
   });
 
   it("models without an upstream xhigh tier restrict minimal and xhigh to null", () => {
-    // The Cline client only exposes reasoning effort as low/medium/high (plus
-    // "off"). It does not support "minimal" or "xhigh". Models whose upstream
-    // provider has no extra-high tier (e.g. z.ai "max") must map both minimal
-    // and xhigh to null.
+    // The Cline client only exposes reasoning effort as none/minimal/low/
+    // medium/high/xhigh. Models whose upstream provider has no extra-high tier
+    // (e.g. z.ai "max") must map both minimal and xhigh to null.
     const withoutXhigh = [
       "cline-pass/mimo-v2.5",
       "cline-pass/mimo-v2.5-pro",
@@ -76,8 +75,8 @@ describe("MODELS", () => {
       expect(map.low).toBe("low");
       expect(map.medium).toBe("medium");
       expect(map.high).toBe("high");
-      // "off" is explicitly supported — reasoning can be disabled.
-      expect(map.off).toBe("off");
+      // "off" is represented as "none" for the ClinePass API.
+      expect(map.off).toBe("none");
     }
   });
 
@@ -99,7 +98,7 @@ describe("MODELS", () => {
     for (const id of ["cline-pass/deepseek-v4-pro", "cline-pass/deepseek-v4-flash"]) {
       const model = MODELS.find((m) => m.id === id)!;
       const map = model.thinkingLevelMap;
-      expect(map.off).toBe("off");
+      expect(map.off).toBe("none");
       expect(map.minimal).toBeNull();
       expect(map.low).toBeNull();
       expect(map.medium).toBeNull();
@@ -111,7 +110,7 @@ describe("MODELS", () => {
   it("GLM-5.2 supports low/medium/high/xhigh (minimal unsupported)", () => {
     const model = MODELS.find((m) => m.id === "cline-pass/glm-5.2")!;
     const map = model.thinkingLevelMap;
-    expect(map.off).toBe("off");
+    expect(map.off).toBe("none");
     expect(map.minimal).toBeNull();
     expect(map.low).toBe("low");
     expect(map.medium).toBe("medium");
