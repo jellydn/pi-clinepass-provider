@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   modelIds,
   MODELS,
+  DEFAULT_THINKING_LEVEL_MAP,
   fetchRemoteModels,
   resolveModels,
   NO_THINKING_MAP,
@@ -55,11 +56,21 @@ describe("MODELS", () => {
     }
   });
 
+  it("DEFAULT_THINKING_LEVEL_MAP maps pi off to Cline none", () => {
+    expect(DEFAULT_THINKING_LEVEL_MAP.off).toBe("none");
+  });
+
+  it("models that support disabling reasoning map pi off to Cline none", () => {
+    for (const model of MODELS) {
+      if (model.thinkingLevelMap.off === null) continue;
+      expect(model.thinkingLevelMap.off).toBe("none");
+    }
+  });
+
   it("models without an upstream xhigh tier restrict minimal and xhigh to null", () => {
-    // The Cline client only exposes reasoning effort as low/medium/high (plus
-    // "off"). It does not support "minimal" or "xhigh". Models whose upstream
-    // provider has no extra-high tier (e.g. z.ai "max") must map both minimal
-    // and xhigh to null.
+    // The Cline client exposes reasoning effort levels (including "off", which
+    // maps to "none" for ClinePass). Models whose upstream provider has no
+    // extra-high tier (e.g. z.ai "max") must map both minimal and xhigh to null.
     const withoutXhigh = [
       "cline-pass/mimo-v2.5",
       "cline-pass/mimo-v2.5-pro",
@@ -76,8 +87,8 @@ describe("MODELS", () => {
       expect(map.low).toBe("low");
       expect(map.medium).toBe("medium");
       expect(map.high).toBe("high");
-      // "off" is explicitly supported — reasoning can be disabled.
-      expect(map.off).toBe("off");
+      // "off" is represented as "none" for the ClinePass API.
+      expect(map.off).toBe("none");
     }
   });
 
@@ -99,7 +110,7 @@ describe("MODELS", () => {
     for (const id of ["cline-pass/deepseek-v4-pro", "cline-pass/deepseek-v4-flash"]) {
       const model = MODELS.find((m) => m.id === id)!;
       const map = model.thinkingLevelMap;
-      expect(map.off).toBe("off");
+      expect(map.off).toBe("none");
       expect(map.minimal).toBeNull();
       expect(map.low).toBeNull();
       expect(map.medium).toBeNull();
@@ -111,12 +122,17 @@ describe("MODELS", () => {
   it("GLM-5.2 supports low/medium/high/xhigh (minimal unsupported)", () => {
     const model = MODELS.find((m) => m.id === "cline-pass/glm-5.2")!;
     const map = model.thinkingLevelMap;
-    expect(map.off).toBe("off");
+    expect(map.off).toBe("none");
     expect(map.minimal).toBeNull();
     expect(map.low).toBe("low");
     expect(map.medium).toBe("medium");
     expect(map.high).toBe("high");
     expect(map.xhigh).toBe("max");
+  });
+
+  it("maps pi off to none for GLM-5.2 (issue #17)", () => {
+    const glm = MODELS.find((m) => m.id === "cline-pass/glm-5.2")!;
+    expect(glm.thinkingLevelMap.off).toBe("none");
   });
 });
 
@@ -182,6 +198,7 @@ describe("fetchRemoteModels", () => {
     expect(result![0].contextWindow).toBe(200_000);
     expect(result![0].maxTokens).toBe(131_072);
     expect(result![0].reasoning).toBe(true);
+    expect(result![0].thinkingLevelMap.off).toBe("none");
     expect(result![0].cost.input).toBeCloseTo(1.4, 1);
     expect(result![0].cost.output).toBeCloseTo(4.4, 1);
   });
@@ -248,6 +265,20 @@ describe("fetchRemoteModels", () => {
     expect(result![0].thinkingLevelMap).toEqual(NO_THINKING_MAP);
   });
 
+  it("uses DEFAULT_THINKING_LEVEL_MAP for remote models without a static fallback", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [{ id: "cline-pass/new-model", name: "New Model", reasoning: true }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(1);
+    expect(result![0].thinkingLevelMap).toEqual(DEFAULT_THINKING_LEVEL_MAP);
+  });
+
   it("returns undefined for empty model list", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(JSON.stringify({ data: [] }), {
@@ -301,5 +332,6 @@ describe("resolveModels", () => {
     expect(result[0].id).toBe("cline-pass/glm-5.2");
     expect(result[0].name).toBe("GLM-5.2 Updated");
     expect(result[1].id).toBe("cline-pass/new-model");
+    expect(result[1].thinkingLevelMap.off).toBe("none");
   });
 });

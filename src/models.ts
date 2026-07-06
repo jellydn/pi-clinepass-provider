@@ -21,11 +21,11 @@ export type ThinkingLevelMap = Readonly<Record<ThinkingLevel, string | null>>;
 
 /**
  * Default thinking level map for remote models without a static fallback.
- * Assumes low/medium/high are supported and marks minimal/xhigh unsupported,
- * matching the Cline client's exposed levels.
+ * Assumes low/medium/high are supported and marks minimal/xhigh unsupported.
+ * "off" maps to "none" for the ClinePass API.
  */
 export const DEFAULT_THINKING_LEVEL_MAP: ThinkingLevelMap = {
-  off: "off",
+  off: "none",
   minimal: null,
   low: "low",
   medium: "medium",
@@ -83,7 +83,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 200_000,
     maxTokens: 131_072,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: "low",
       medium: "medium",
@@ -134,7 +134,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 1_000_000,
     maxTokens: 384_000,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: null,
       medium: null,
@@ -151,7 +151,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 1_000_000,
     maxTokens: 384_000,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: null,
       medium: null,
@@ -168,7 +168,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 262_144,
     maxTokens: 131_072,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: "low",
       medium: "medium",
@@ -185,7 +185,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 262_144,
     maxTokens: 131_072,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: "low",
       medium: "medium",
@@ -202,7 +202,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 1_048_576,
     maxTokens: 131_072,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: "low",
       medium: "medium",
@@ -219,7 +219,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 262_144,
     maxTokens: 131_072,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: "low",
       medium: "medium",
@@ -237,7 +237,7 @@ export const MODELS: readonly ModelConfig[] = [
     contextWindow: 1_048_576,
     maxTokens: 131_072,
     thinkingLevelMap: {
-      off: "off",
+      off: "none",
       minimal: null,
       low: "low",
       medium: "medium",

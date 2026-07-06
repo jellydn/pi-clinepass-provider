@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Thinking level `off` mapping** — map pi's `off` thinking level to ClinePass `reasoning.effort: "none"` instead of `"off"`, fixing 400 errors on GLM 5.2 and other models when thinking is disabled ([#17](https://github.com/jellydn/pi-clinepass-provider/issues/17))
+
 ## [1.0.2] — 2026-06-30
 
 ### Added
