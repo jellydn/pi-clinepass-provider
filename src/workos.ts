@@ -154,14 +154,21 @@ export async function refreshWorkosToken(
 
 // ─── Credential Extraction ─────────────────────────────────────────────────
 
-function resolveExpiresAt(
-  expiresField: unknown,
-  fallbackMs: number = WORKOS_TOKEN_LIFETIME_MS,
-): number {
+/**
+ * Resolve a credential's expiry timestamp.
+ *
+ * Returns the field as-is when it's a finite number. For missing or invalid
+ * expiry, returns 0 (treats the credential as stale) rather than a synthetic
+ * future time — this ensures `pickFreshestAuth` does not rank unknown-expiry
+ * credentials above known ones, and `loginWithWorkosCredentials` refreshes
+ * before use. (Returning `Date.now() + lifetime` here would let a stale token
+ * with no expiry outrank a known-expired-but-refreshable one and skip refresh.)
+ */
+function resolveExpiresAt(expiresField: unknown): number {
   if (typeof expiresField === "number" && Number.isFinite(expiresField)) {
     return expiresField;
   }
-  return Date.now() + fallbackMs;
+  return 0;
 }
 
 /** Parse a Cline CLI `settings.auth` block into WorkOS credentials. */
