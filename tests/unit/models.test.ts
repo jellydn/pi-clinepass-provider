@@ -127,7 +127,7 @@ describe("MODELS", () => {
     expect(map.low).toBe("low");
     expect(map.medium).toBe("medium");
     expect(map.high).toBe("high");
-    expect(map.xhigh).toBe("max");
+    expect(map.xhigh).toBe("xhigh");
   });
 
   it("maps pi off to none for GLM-5.2 (issue #17)", () => {

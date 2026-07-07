@@ -88,7 +88,7 @@ export const MODELS: readonly ModelConfig[] = [
       low: "low",
       medium: "medium",
       high: "high",
-      xhigh: "max",
+      xhigh: "xhigh",
     },
   },
   {
