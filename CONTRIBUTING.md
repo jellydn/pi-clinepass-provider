@@ -143,6 +143,7 @@ Each commit should be atomic — one logical change per commit, staged explicitl
 - **CONCERNS.md** — `.planning/codebase/CONCERNS.md` tracks remaining technical concerns and coverage gaps.
 - **CONTEXT.md** — domain glossary of ClinePass-specific terms.
 - **AGENTS.md** — agent-facing guide (architecture overview, commands, gotchas).
+- **`.plans/implement-notes.md`** — append-only implementation log (blockers, issues, findings, learnings) for all AI tools; see AGENTS.md.
 
 ## Questions?
 
