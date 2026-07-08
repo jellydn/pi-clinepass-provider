@@ -52,7 +52,7 @@ export default async function (pi: ExtensionAPI) {
   pi.registerProvider(PROVIDER_NAME, {
     name: "ClinePass",
     baseUrl: `${apiBase}/api/v1`,
-    ...(envApiKey ? { apiKey: ENV_API_KEY } : {}),
+    ...(envApiKey ? { apiKey: `$${ENV_API_KEY}` } : {}),
     authHeader: true,
     // ClinePass uses the standard OpenAI Chat Completions format, so pi's
     // built-in openai-completions streaming handles SSE + tool calls + usage.

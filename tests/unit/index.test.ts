@@ -62,7 +62,7 @@ describe("provider registration", () => {
       await mod.default(fakePi as never);
 
       expect(captured).toBeDefined();
-      expect(captured!.config.apiKey).toBe(ENV_API_KEY);
+      expect(captured!.config.apiKey).toBe(`$${ENV_API_KEY}`);
     } finally {
       if (original !== undefined) {
         process.env[ENV_API_KEY] = original;
