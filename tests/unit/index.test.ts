@@ -36,9 +36,40 @@ describe("provider registration", () => {
     expect(captured).toBeDefined();
     expect(captured!.name).toBe(PROVIDER_NAME);
     expect(captured!.config.baseUrl).toBe(`${DEFAULT_API_BASE}/api/v1`);
-    expect(captured!.config.apiKey).toBe(`$${ENV_API_KEY}`);
+    // apiKey is only registered when CLINE_API_KEY env var is set;
+    // otherwise it's undefined (OAuth handles auth)
+    expect(captured!.config.apiKey).toBeUndefined();
     expect(captured!.config.api).toBe("openai-completions");
     expect(captured!.config.authHeader).toBe(true);
+  });
+
+  it("registers apiKey config when CLINE_API_KEY env var is set", async () => {
+    // This test intentionally uses dynamic import because index.ts is a module
+    // that needs fresh evaluation with the env var set.
+    const original = process.env[ENV_API_KEY];
+    process.env[ENV_API_KEY] = "test-key-123";
+    try {
+      let captured: { name: string; config: Record<string, unknown> } | undefined;
+      const fakePi = {
+        registerProvider: (name: string, config: Record<string, unknown>) => {
+          captured = { name, config };
+        },
+        on: () => {},
+      };
+
+      // Re-import to get fresh module evaluation with env var set
+      const mod = await import("../../src/index.js?t=" + Date.now());
+      await mod.default(fakePi as never);
+
+      expect(captured).toBeDefined();
+      expect(captured!.config.apiKey).toBe(ENV_API_KEY);
+    } finally {
+      if (original !== undefined) {
+        process.env[ENV_API_KEY] = original;
+      } else {
+        delete process.env[ENV_API_KEY];
+      }
+    }
   });
 
   it("registers all static models as fallback when API is unavailable", async () => {
