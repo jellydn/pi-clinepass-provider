@@ -22,7 +22,7 @@ describe("provider registration", () => {
     vi.unstubAllEnvs();
   });
 
-  it("registers with correct baseUrl, apiKey, and api type", async () => {
+  it("registers with correct baseUrl, no apiKey when env unset, and api type", async () => {
     let captured: { name: string; config: Record<string, unknown> } | undefined;
 
     const fakePi = {

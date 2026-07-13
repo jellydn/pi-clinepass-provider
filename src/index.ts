@@ -44,9 +44,9 @@ export default async function (pi: ExtensionAPI) {
   const apiKey = resolveApiKey();
   const models = await resolveModels(apiKey, { apiBase });
 
-  // Only register apiKey config when the environment variable is actually set.
-  // Otherwise the literal "$CLINE_API_KEY" would be sent as bearer token,
-  // overriding OAuth and causing 401 errors.
+  // Only register the $CLINE_API_KEY sigil when the env var is set at extension
+  // load time. OAuth-only installs should not advertise an unconfigured env-key
+  // fallback; when present, the $… form resolves the secret at request time.
   const envApiKey = process.env[ENV_API_KEY]?.trim();
 
   pi.registerProvider(PROVIDER_NAME, {
