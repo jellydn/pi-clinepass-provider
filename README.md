@@ -145,7 +145,7 @@ prek install
 
 ## Resources
 
-- **[opencode-clinepass-provider](https://github.com/haconglinh1990/opencode-clinepass-provider)** — ClinePass provider for [OpenCode](https://github.com/sst/opencode); same subscription and models outside pi.
+- **[opencode-clinepass-provider](https://github.com/haconglinh1990/opencode-clinepass-provider)** — ClinePass provider for [OpenCode](https://github.com/sst/opencode); same subscription and models outside of pi.
 
 ## 📄 License
 
