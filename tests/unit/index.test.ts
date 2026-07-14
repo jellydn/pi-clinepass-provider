@@ -14,13 +14,15 @@ import { MODELS } from "../../src/models.js";
 describe("provider registration", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("Not Found", { status: 404 })));
+    vi.stubEnv(ENV_API_KEY, "");
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
-  it("registers with correct baseUrl, apiKey, and api type", async () => {
+  it("registers with correct baseUrl, no apiKey when env unset, and api type", async () => {
     let captured: { name: string; config: Record<string, unknown> } | undefined;
 
     const fakePi = {
@@ -36,9 +38,26 @@ describe("provider registration", () => {
     expect(captured).toBeDefined();
     expect(captured!.name).toBe(PROVIDER_NAME);
     expect(captured!.config.baseUrl).toBe(`${DEFAULT_API_BASE}/api/v1`);
-    expect(captured!.config.apiKey).toBe(`$${ENV_API_KEY}`);
+    expect(captured!.config.apiKey).toBeUndefined();
     expect(captured!.config.api).toBe("openai-completions");
     expect(captured!.config.authHeader).toBe(true);
+  });
+
+  it("registers apiKey config when CLINE_API_KEY env var is set", async () => {
+    vi.stubEnv(ENV_API_KEY, "test-key-123");
+    let captured: { name: string; config: Record<string, unknown> } | undefined;
+    const fakePi = {
+      registerProvider(name: string, config: Record<string, unknown>) {
+        captured = { name, config };
+      },
+      on(_event: string, _handler: unknown) {},
+    };
+
+    const mod = await import("../../src/index.js");
+    await mod.default(fakePi as never);
+
+    expect(captured).toBeDefined();
+    expect(captured!.config.apiKey).toBe(`$${ENV_API_KEY}`);
   });
 
   it("registers all static models as fallback when API is unavailable", async () => {

@@ -44,10 +44,15 @@ export default async function (pi: ExtensionAPI) {
   const apiKey = resolveApiKey();
   const models = await resolveModels(apiKey, { apiBase });
 
+  // Only register the $CLINE_API_KEY sigil when the env var is set at extension
+  // load time. OAuth-only installs should not advertise an unconfigured env-key
+  // fallback; when present, the $… form resolves the secret at request time.
+  const envApiKey = process.env[ENV_API_KEY]?.trim();
+
   pi.registerProvider(PROVIDER_NAME, {
     name: "ClinePass",
     baseUrl: `${apiBase}/api/v1`,
-    apiKey: `$${ENV_API_KEY}`,
+    ...(envApiKey ? { apiKey: `$${ENV_API_KEY}` } : {}),
     authHeader: true,
     // ClinePass uses the standard OpenAI Chat Completions format, so pi's
     // built-in openai-completions streaming handles SSE + tool calls + usage.
