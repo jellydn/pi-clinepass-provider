@@ -2,7 +2,9 @@
   "projectName": "pi-clinepass-provider",
   "projectOwner": "jellydn",
   "repoType": "github",
-  "files": ["README.md"],
+  "files": [
+    "README.md"
+  ],
   "imageSize": 100,
   "contributors": [
     {
@@ -10,14 +12,31 @@
       "name": "Huynh Duc Dung",
       "avatar_url": "https://avatars.githubusercontent.com/jellydn",
       "profile": "https://github.com/jellydn",
-      "contributions": ["code", "doc"]
+      "contributions": [
+        "code",
+        "doc"
+      ]
     },
     {
       "login": "dereknex",
       "name": "Derek Chen",
       "avatar_url": "https://avatars.githubusercontent.com/dereknex",
       "profile": "https://github.com/dereknex",
-      "contributions": ["code"]
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "minglu6",
+      "name": "minglu6",
+      "avatar_url": "https://avatars.githubusercontent.com/u/155623115?v=4",
+      "profile": "https://github.com/minglu6",
+      "contributions": [
+        "code"
+      ]
     }
-  ]
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7
 }
