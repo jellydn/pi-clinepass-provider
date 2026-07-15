@@ -25,13 +25,11 @@ import { resolveModels } from "./models.js";
 import { handleClinePassError } from "./error-handler.js";
 import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
-// Note on compat/thinkingFormat: ClinePass exposes a standard OpenAI-compatible
-// Chat Completions API (per docs.cline.bot). Cline's infrastructure normalizes
-// the upstream models (GLM, Kimi, DeepSeek, etc.) to this format, so pi's
-// built-in openai-completions streaming and default thinking handling work
-// without per-model compat overrides. If reasoning is found to not work
-// correctly for a specific model through the live API, add a model-level
-// compat override here (e.g. compat: { thinkingFormat: "zai" } for GLM).
+// ClinePass exposes OpenAI-compatible chat completions, but rejects the
+// `developer` role pi-ai uses by default for reasoning models. Every model
+// declares `compat.supportsDeveloperRole: false` in models.ts so system
+// prompts use `system`. Per-model thinkingFormat overrides remain available
+// if a specific upstream model needs them (e.g. compat.thinkingFormat: "zai").
 
 // ─── Extension Entry Point ─────────────────────────────────────────────────
 

@@ -85,6 +85,7 @@ describe("provider registration", () => {
       expect(models[i].contextWindow).toBe(MODELS[i].contextWindow);
       expect(models[i].maxTokens).toBe(MODELS[i].maxTokens);
       expect(models[i].thinkingLevelMap).toEqual(MODELS[i].thinkingLevelMap);
+      expect(models[i].compat).toEqual(MODELS[i].compat);
       expect(models[i].input).toEqual([...MODELS[i].input]);
       expect(Array.isArray(models[i].input)).toBe(true);
     }

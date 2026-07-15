@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   modelIds,
   MODELS,
+  CLINEPASS_OPENAI_COMPAT,
   DEFAULT_THINKING_LEVEL_MAP,
   fetchRemoteModels,
   resolveModels,
@@ -134,6 +135,13 @@ describe("MODELS", () => {
     const glm = MODELS.find((m) => m.id === "cline-pass/glm-5.2")!;
     expect(glm.thinkingLevelMap.off).toBe("none");
   });
+
+  it("declares supportsDeveloperRole: false for every model (issue #31)", () => {
+    for (const model of MODELS) {
+      expect(model.compat).toEqual(CLINEPASS_OPENAI_COMPAT);
+      expect(model.compat.supportsDeveloperRole).toBe(false);
+    }
+  });
 });
 
 // ─── fetchRemoteModels ─────────────────────────────────────────────────────
@@ -201,6 +209,7 @@ describe("fetchRemoteModels", () => {
     expect(result![0].thinkingLevelMap.off).toBe("none");
     expect(result![0].cost.input).toBeCloseTo(1.4, 1);
     expect(result![0].cost.output).toBeCloseTo(4.4, 1);
+    expect(result![0].compat.supportsDeveloperRole).toBe(false);
   });
 
   it("parses bare array response format", async () => {
@@ -248,6 +257,7 @@ describe("fetchRemoteModels", () => {
     expect(result![0].contextWindow).toBe(staticModel!.contextWindow);
     expect(result![0].maxTokens).toBe(staticModel!.maxTokens);
     expect(result![0].cost.input).toBe(staticModel!.cost.input);
+    expect(result![0].compat).toEqual(staticModel!.compat);
   });
 
   it("uses NO_THINKING_MAP when remote model reports reasoning: false", async () => {
@@ -277,6 +287,7 @@ describe("fetchRemoteModels", () => {
     const result = await fetchRemoteModels({ apiKey: "test_key" });
     expect(result).toHaveLength(1);
     expect(result![0].thinkingLevelMap).toEqual(DEFAULT_THINKING_LEVEL_MAP);
+    expect(result![0].compat.supportsDeveloperRole).toBe(false);
   });
 
   it("returns undefined for empty model list", async () => {
