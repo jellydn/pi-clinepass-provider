@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- **Thinking levels usage guide** — added Reasoning column to Supported Models table showing per-model thinking level capabilities (off/minimal/low/medium/high/xhigh), plus `--thinking` flag examples in Usage section ([#17](https://github.com/jellydn/pi-clinepass-provider/issues/17))
+- **Modular architecture** — documented 8 source modules (`env`, `auth`, `models`, `workos`, `oauth`, `error-handler`, `errors`, `utils`) + entry point in Features
+- **Unsupported level wording fix** — clarified that unsupported thinking levels are not sent to the API (model runs with its default reasoning behavior), not "without reasoning"
+- **GLM-5.2 reasoning matrix fix** — corrected table to exclude unsupported `minimal` level
+
 ## [1.1.1] — 2026-07-15
 
 ### Fixed

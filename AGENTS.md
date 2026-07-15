@@ -6,6 +6,17 @@ pi extension that registers `"clinepass"` as a model provider via pi's `openai-c
 
 Models are referenced as `clinepass/cline-pass/<slug>` (e.g. `clinepass/cline-pass/deepseek-v4-flash`). When invoking pi directly: `--model clinepass/cline-pass/...`.
 
+## Implementation notes (all AI tools)
+
+During any implementation work — pi, Cursor, Codex, Claude Code, OpenCode, or other agents — **append** to `.planning/implement-notes.md` whenever you hit a blocker, discover an issue, uncover a non-obvious finding, or learn something worth preserving for the next session.
+
+- **When:** as soon as the item is known; do not defer to PR/merge time.
+- **What:** blockers (cannot proceed), issues (bugs/gaps), findings (surprising behaviour), learnings (conventions, API quirks, test tricks).
+- **How:** one dated entry per item; append under `## Entries` (newest at bottom). See the file header for the entry template.
+- **Scope:** repo work only — no secrets, tokens, or personal data.
+
+This file is the handoff trail between agents and humans. If you resolve an item later, add a follow-up line under the same entry rather than deleting it.
+
 ## Commands
 
 | Command                 | What it does                                      |
