@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-07-15
+
 ### Fixed
 
 - **Developer role rejected by ClinePass API** — set `compat.supportsDeveloperRole: false` on all models so pi sends `system` instead of `developer`, fixing 400 errors on GLM-5.2 and other ClinePass models ([#31](https://github.com/jellydn/pi-clinepass-provider/issues/31))
-- **WorkOS login refresh hardening** — pick the freshest credentials across `cline-pass`, `cline`, and pi `auth.json`; fall back to manual API-key paste when subscription refresh fails ([#16](https://github.com/jellydn/pi-clinepass-provider/issues/16))
 
 ## [1.0.6] — 2026-07-06
 
