@@ -8,7 +8,7 @@ Models are referenced as `clinepass/cline-pass/<slug>` (e.g. `clinepass/cline-pa
 
 ## Implementation notes (all AI tools)
 
-During any implementation work — pi, Cursor, Codex, Claude Code, OpenCode, or other agents — **append** to `.plans/implement-notes.md` whenever you hit a blocker, discover an issue, uncover a non-obvious finding, or learn something worth preserving for the next session.
+During any implementation work — pi, Cursor, Codex, Claude Code, OpenCode, or other agents — **append** to `.planning/implement-notes.md` whenever you hit a blocker, discover an issue, uncover a non-obvious finding, or learn something worth preserving for the next session.
 
 - **When:** as soon as the item is known; do not defer to PR/merge time.
 - **What:** blockers (cannot proceed), issues (bugs/gaps), findings (surprising behaviour), learnings (conventions, API quirks, test tricks).

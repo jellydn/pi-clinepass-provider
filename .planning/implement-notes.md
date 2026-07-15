@@ -23,5 +23,12 @@ _(append below — newest at bottom)_
 
 - **Context:** drafting AGENTS.md rule for cross-tool implementation logging
 - **Type:** learning
-- **Detail:** repo already had `.planning/codebase/` for static codebase maps; `.plans/implement-notes.md` is the session-scoped append log distinct from CONCERNS.md (tracked gaps) and ADRs (decisions)
+- **Detail:** repo already had `.planning/codebase/` for static codebase maps; `.planning/implement-notes.md` is the session-scoped append log distinct from CONCERNS.md (tracked gaps) and ADRs (decisions)
 - **Follow-up:** agents append here during work; link PRs/issues in follow-up lines when resolved
+
+### 2026-07-15 — consolidate implement-notes under .planning
+
+- **Context:** PR #25 review (Gemini Code Assist)
+- **Type:** learning
+- **Detail:** moved log from `.plans/` to `.planning/implement-notes.md` to avoid root dirs `.plans` vs `.planning`
+- **Follow-up:** addressed in commit for PR #25
