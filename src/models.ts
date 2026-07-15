@@ -53,11 +53,14 @@ export const NO_THINKING_MAP: ThinkingLevelMap = {
  * `function`). pi-ai defaults to `developer` for reasoning models unless
  * `supportsDeveloperRole` is false (see pi-ai README).
  */
-export const CLINEPASS_OPENAI_COMPAT = {
-  supportsDeveloperRole: false,
-} as const;
+export interface ClinePassOpenAICompat {
+  readonly supportsDeveloperRole: boolean;
+  readonly thinkingFormat?: string;
+}
 
-export type ClinePassOpenAICompat = typeof CLINEPASS_OPENAI_COMPAT;
+export const CLINEPASS_OPENAI_COMPAT: ClinePassOpenAICompat = {
+  supportsDeveloperRole: false,
+};
 
 /**
  * ClinePass curated open-weight coding models.
@@ -88,8 +91,10 @@ export interface ModelConfig {
   compat: ClinePassOpenAICompat;
 }
 
-/** Static catalog entries before ClinePass-wide compat is attached. */
-type ModelConfigBase = Omit<ModelConfig, "compat">;
+/** Static catalog entries; per-model compat overrides merge with CLINEPASS_OPENAI_COMPAT. */
+interface ModelConfigBase extends Omit<ModelConfig, "compat"> {
+  compat?: Partial<ClinePassOpenAICompat>;
+}
 
 const MODELS_BASE: readonly ModelConfigBase[] = [
   {
@@ -267,7 +272,10 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
 
 export const MODELS: readonly ModelConfig[] = MODELS_BASE.map((model) => ({
   ...model,
-  compat: CLINEPASS_OPENAI_COMPAT,
+  compat: {
+    ...CLINEPASS_OPENAI_COMPAT,
+    ...model.compat,
+  },
 }));
 
 /**
@@ -338,7 +346,10 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
     thinkingLevelMap: reasoning
       ? (fallback?.thinkingLevelMap ?? DEFAULT_THINKING_LEVEL_MAP)
       : NO_THINKING_MAP,
-    compat: fallback?.compat ?? CLINEPASS_OPENAI_COMPAT,
+    compat: {
+      ...CLINEPASS_OPENAI_COMPAT,
+      ...fallback?.compat,
+    },
   };
 }
 
