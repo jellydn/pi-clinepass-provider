@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
-> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 10 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, DeepSeek V4, Qwen3.7, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
+> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 11 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.7, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
@@ -58,6 +58,7 @@ pnpm add pi-clinepass-provider
 | GLM-5.2           | `cline-pass/glm-5.2`           | 200K    | off / low / medium / high / xhigh |
 | Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    | low / medium / high               |
 | Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    | low / medium / high               |
+| Kimi K3           | `cline-pass/kimi-k3`           | 1M      | high (max; always on)              |
 | DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   | 1M      | off + high (high used for xhigh)  |
 | DeepSeek V4 Flash | `cline-pass/deepseek-v4-flash` | 1M      | off + high (high used for xhigh)  |
 | MiMo-V2.5         | `cline-pass/mimo-v2.5`         | 262K    | off / low / medium / high         |

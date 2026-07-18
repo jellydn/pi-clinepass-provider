@@ -32,3 +32,17 @@ _(append below — newest at bottom)_
 - **Type:** learning
 - **Detail:** moved log from `.plans/` to `.planning/implement-notes.md` to avoid root dirs `.plans` vs `.planning`
 - **Follow-up:** addressed in commit for PR #25
+
+### 2026-07-19 — add Kimi K3 static catalog entry
+
+- **Context:** adding `cline-pass/kimi-k3` to static model catalog in `src/models.ts`
+- **Type:** learning
+- **Detail:** local env lacked project deps initially (`vitest` missing); running `npm install` was required before tests could execute.
+- **Follow-up:** run `npm test` after `npm install` in fresh environments.
+
+### 2026-07-19 — Kimi K3 reasoning-level review finding
+
+- **Context:** reviewing the Kimi K3 catalog entry before a public PR
+- **Type:** issue
+- **Detail:** Kimi documents K3 as always-on reasoning with only `reasoning_effort: "max"`; mapping pi `off` to `"none"` can send an unsupported provider value.
+- **Follow-up:** set `off` to `null` and added an explicit K3 thinking-map unit test. Attempted live validation, but `CLINE_API_KEY` is not set in this environment; `cline-pass/kimi-k3` plus `"max"` still requires a live ClinePass validation before merge.

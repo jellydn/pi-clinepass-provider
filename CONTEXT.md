@@ -53,7 +53,7 @@ A JSON file that pi uses to persist OAuth credentials. Two formats exist:
 
 ### Static Model Catalog
 
-A hardcoded list of 10 curated models (GLM-5.2, Kimi K2.7 Code, Kimi K2.6, DeepSeek V4 Pro, DeepSeek V4 Flash, MiMo-V2.5, MiMo-V2.5-Pro, MiniMax M3, Qwen3.7 Max, Qwen3.7 Plus) with reference pricing, context windows, and token limits.
+A hardcoded list of 11 curated models (GLM-5.2, Kimi K2.7 Code, Kimi K2.6, Kimi K3, DeepSeek V4 Pro, DeepSeek V4 Flash, MiMo-V2.5, MiMo-V2.5-Pro, MiniMax M3, Qwen3.7 Max, Qwen3.7 Plus) with reference pricing, context windows, and token limits.
 
 ### Dynamic Model Discovery
 

@@ -13,7 +13,7 @@
 
 **`src/models.ts` exceeds the 300-line guideline:**
 
-- Issue: CONTRIBUTING.md states "Files should stay under 300 lines. If a module grows beyond that, extract a sub-module." `models.ts` is 412 lines — driven by the 10-entry static `MODELS` catalog (each with a 6-level `thinkingLevelMap`) plus the dynamic-discovery logic.
+- Issue: CONTRIBUTING.md states "Files should stay under 300 lines. If a module grows beyond that, extract a sub-module." `models.ts` is 466 lines — driven by the 11-entry static `MODELS` catalog (each with a 6-level `thinkingLevelMap`) plus the dynamic-discovery logic.
 - Files: `src/models.ts`
 - Impact: Mild — the catalog is repetitive data, not complex logic; locality is still good. But it sets a precedent for ignoring the guideline as more models are added.
 - Fix approach: Either (a) extract the static `MODELS` array into `src/models/static-catalog.ts` and keep `models.ts` for types + discovery, or (b) raise the guideline explicitly for data-table modules. Low priority; revisit when the catalog grows past ~15 models.
@@ -69,7 +69,7 @@ None significant. The extension is stateless after registration. Startup does on
 
 **Model catalog growth:**
 
-- Current capacity: 10 static models, 412-line `models.ts`.
+- Current capacity: 11 static models, 466-line `models.ts`.
 - Limit: No hard limit; each model adds ~25 lines. The 300-line guideline will be increasingly violated.
 - Scaling path: Extract static catalog to its own module (see Tech Debt above) or move to a data file (JSON/TS data table) parsed at load.
 
