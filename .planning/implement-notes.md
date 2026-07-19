@@ -46,3 +46,10 @@ _(append below — newest at bottom)_
 - **Type:** issue
 - **Detail:** Kimi documents K3 as always-on reasoning with only `reasoning_effort: "max"`; mapping pi `off` to `"none"` can send an unsupported provider value.
 - **Follow-up:** set `off` to `null` and added an explicit K3 thinking-map unit test. The contributor manually confirmed a successful ClinePass completion with `cline-pass/kimi-k3` and pi `--thinking high` (`reasoning_effort: "max"`).
+
+### 2026-07-19 — PR review reply API payload
+
+- **Context:** replying to inline GitHub review comments on PR #43
+- **Type:** learning
+- **Detail:** GitHub's review-comment REST endpoint requires `in_reply_to` as a JSON number; `gh api -f` serializes it as a string and is rejected.
+- **Follow-up:** use `gh api --input` with a JSON payload for inline replies.
