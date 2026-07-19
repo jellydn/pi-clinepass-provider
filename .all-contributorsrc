@@ -34,6 +34,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "momoazn",
+      "name": "Mohamad Moaz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/262980872?v=4",
+      "profile": "https://github.com/momoazn",
+      "contributions": [
+        "doc",
+        "code"
+      ]
     }
   ],
   "commitType": "docs",
