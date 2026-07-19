@@ -45,4 +45,4 @@ _(append below — newest at bottom)_
 - **Context:** reviewing the Kimi K3 catalog entry before a public PR
 - **Type:** issue
 - **Detail:** Kimi documents K3 as always-on reasoning with only `reasoning_effort: "max"`; mapping pi `off` to `"none"` can send an unsupported provider value.
-- **Follow-up:** set `off` to `null` and added an explicit K3 thinking-map unit test. Attempted live validation, but `CLINE_API_KEY` is not set in this environment; `cline-pass/kimi-k3` plus `"max"` still requires a live ClinePass validation before merge.
+- **Follow-up:** set `off` to `null` and added an explicit K3 thinking-map unit test. The contributor manually confirmed a successful ClinePass completion with `cline-pass/kimi-k3` and pi `--thinking high` (`reasoning_effort: "max"`).
