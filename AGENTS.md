@@ -41,7 +41,7 @@ This file is the handoff trail between agents and humans. If you resolve an item
 - **`src/index.ts`** — Entry. Calls `pi.registerProvider()`, wires models + OAuth + error handler.
 - **`src/env.ts`** — Constants (`DEFAULT_API_BASE`, `ENV_API_KEY`, `PROVIDER_NAME`), `resolveApiBase()`, `sanitizeApiKey()`, `buildEndpointUrl()`.
 - **`src/auth.ts`** — API key resolution chain: env var → `~/.cline/data/settings/providers.json` → `~/.pi/agent/auth.json`. Shared `walkAuthPaths()` / `walkClineProviderSettings()` utilities used by both auth and workos modules.
-- **`src/models.ts`** — Static model definitions (10 curated models with pricing + thinking level maps) and dynamic model discovery (`fetchRemoteModels`, `resolveModels`). 5-second fetch timeout.
+- **`src/models.ts`** — Static model definitions (11 curated models with pricing + thinking level maps) and dynamic model discovery (`fetchRemoteModels`, `resolveModels`). 5-second fetch timeout.
 - **`src/workos.ts`** — WorkOS OAuth protocol adapter: credential extraction from providers.json and `~/.pi/agent/auth.json`, token refresh via Cline's `/api/v1/auth/refresh`, `isWorkosToken()` check.
 - **`src/oauth.ts`** — `/login` flow: auto-detects existing WorkOS credentials, falls back to browser-assisted manual API key paste. `refreshToken()` delegates to WorkOS refresh or returns static key unchanged.
 - **`src/error-handler.ts`** + **`src/errors.ts`** — `message_end` handler that classifies ClinePass 401/403/429 errors into user-friendly notifications.

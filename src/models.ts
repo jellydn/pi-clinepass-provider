@@ -149,6 +149,24 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
+    id: "cline-pass/kimi-k3",
+    name: "Kimi K3 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+    // K3 always reasons and currently only supports reasoning_effort="max".
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "max",
+      xhigh: null,
+    },
+  },
+  {
     id: "cline-pass/deepseek-v4-pro",
     name: "DeepSeek V4 Pro (ClinePass)",
     reasoning: true,

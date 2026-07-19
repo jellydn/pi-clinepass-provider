@@ -17,6 +17,7 @@ describe("modelIds", () => {
     expect(ids).toHaveLength(MODELS.length);
     expect(ids).toContain("cline-pass/glm-5.2");
     expect(ids).toContain("cline-pass/kimi-k2.7-code");
+    expect(ids).toContain("cline-pass/kimi-k3");
     expect(ids).toContain("cline-pass/deepseek-v4-flash");
   });
 
@@ -93,9 +94,9 @@ describe("MODELS", () => {
     }
   });
 
-  it("always-reasoning models (Kimi) mark off as null, support others like standard", () => {
-    const alwaysOn = ["cline-pass/kimi-k2.7-code", "cline-pass/kimi-k2.6"];
-    for (const id of alwaysOn) {
+  it("Kimi K2 models always reason but support standard efforts", () => {
+    const kimiK2Models = ["cline-pass/kimi-k2.7-code", "cline-pass/kimi-k2.6"];
+    for (const id of kimiK2Models) {
       const model = MODELS.find((m) => m.id === id)!;
       const map = model.thinkingLevelMap;
       expect(map.off).toBeNull();
@@ -105,6 +106,18 @@ describe("MODELS", () => {
       expect(map.medium).toBe("medium");
       expect(map.high).toBe("high");
     }
+  });
+
+  it("Kimi K3 always reasons with max effort only", () => {
+    const model = MODELS.find((m) => m.id === "cline-pass/kimi-k3")!;
+    expect(model.thinkingLevelMap).toEqual({
+      off: null,
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "max",
+      xhigh: null,
+    });
   });
 
   it("DeepSeek V4 models only support high (and xhigh clamped to high)", () => {
