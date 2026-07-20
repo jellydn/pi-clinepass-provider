@@ -46,7 +46,7 @@ This file is the handoff trail between agents and humans. If you resolve an item
 - **`src/oauth.ts`** — `/login` flow: auto-detects existing WorkOS credentials, falls back to browser-assisted manual API key paste. `refreshToken()` delegates to WorkOS refresh or returns static key unchanged.
 - **`src/error-handler.ts`** + **`src/errors.ts`** — `message_end` handler that classifies ClinePass 401/403/429 errors into user-friendly notifications.
 - **`src/utils.ts`** — Type guards (`isRecord`, `stringValue`, `numberValue`, `booleanValue`).
-- **`tests/type/contract.ts`** — Type-level contract: verifies the default export conforms to `ExtensionAPI` at compile time. Imported by `tsc` via `tsconfig.json` `include`.
+- **`tests/type/contract.ts`** — Type-level contract: verifies the default export conforms to `ExtensionAPI` at compile time. Checked by `tsc` since `tsconfig.json` `include` covers all of `src/**/*.ts` + `tests/**/*.ts` (broader than vitest, which only runs `tests/**/*.test.ts`).
 
 ## Testing
 
@@ -54,10 +54,11 @@ This file is the handoff trail between agents and humans. If you resolve an item
 - **Type contract** (`tests/type/contract.ts`) — Verified by `npm run typecheck`. If pi changes `ExtensionAPI`, this fails at compile time.
 - **E2E** (`tests/e2e/smoke.sh`) — Runs `pi --no-extensions -e <path>` with real `CLINE_API_KEY`. Requires `pi` CLI globally. CI runs only on `workflow_dispatch` with `run_e2e=true`.
 - **Covered modules** — 1:1 test-to-module mapping (`env.test.ts`, `auth.test.ts`, `models.test.ts`, etc.).
+- **CI matrix** (`.github/workflows/ci.yml`) runs unit tests against 3 variants: latest pi + Node 22, **pinned minimum pi `0.80.2`** + Node 22, and latest pi + Node 24. The min-pi pin exists to catch `ExtensionAPI` contract drift — if you use a newer pi-only API, that job fails. Lint + format checks run only on the canonical latest/Node 22 job.
 
 ## Key gotchas
 
-- **Pre-commit hooks via prek** — `prek install` after clone; `prek run --all-files` to check manually. Runs `oxlint` + `oxfmt --check`.
+- **Pre-commit hooks via prek** — `prek install` after clone; `prek run --all-files` to check manually. Runs `oxlint` + `oxfmt --check`. Also runs builtin hooks: trailing-whitespace, end-of-file-fixer, check-added-large-files, check-json, check-toml, check-yaml.
 - **Release flow** — `bumpp` handles version bump + commit + tag + push. Running `npm run release` prompts interactively. Then `npm run pub` (which runs `npm publish`, gated by `np` config). This is the only CI-trusted workflow.
 - **Changesets** — `.changeset/` directory present; changeset files accumulate between releases.
 - **Local dev** — `npm install` pulls peer deps (`@earendil-works/pi-ai`, `@earendil-works/pi-coding-agent`) automatically since they're in `devDependencies`.
