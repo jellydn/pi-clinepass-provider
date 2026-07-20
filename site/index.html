@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pi-clinepass-provider — ClinePass for pi</title>
+<meta name="description" content="11 curated open-weight coding models through Cline's $9.99/month subscription, directly in pi">
+<meta name="color-scheme" content="dark">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-raised: #1a1a1a;
+    --border: #262626;
+    --border-faint: #1e1e1e;
+    --text: #e4e4e4;
+    --text-muted: #888;
+    --text-faint: #5a5a5a;
+    --accent: #f0b429;
+    --accent-glow: rgba(240, 180, 41, 0.08);
+    --accent-subtle: rgba(240, 180, 41, 0.06);
+    --code-bg: #111;
+    --green: #34d399;
+    --red: #f87171;
+    --orange: #fb923c;
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Header ────────────────────────────── */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-faint);
+    padding: 12px 0;
+  }
+  header .wrap { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .gh-link { color: var(--text-muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+  .gh-link:hover { color: var(--text); }
+
+  /* ── Hero ──────────────────────────────── */
+  .hero { padding: 80px 0 64px; text-align: center; }
+  .hero h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p { font-size: 18px; color: var(--text-muted); max-width: 560px; margin: 0 auto 32px; line-height: 1.5; }
+
+  .install-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    max-width: 520px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+  .install-block code {
+    font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace;
+    font-size: 14px;
+    color: var(--green);
+    flex: 1;
+    text-align: left;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .copy-btn {
+    flex-shrink: 0;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--text-muted); }
+  .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+  .hero .price-note { font-size: 13px; color: var(--text-faint); }
+
+  /* ── Model Table ────────────────────────── */
+  .models { padding: 0 0 80px; }
+  .section-head { margin-bottom: 32px; }
+  .section-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .section-head p { font-size: 14px; color: var(--text-muted); }
+
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 12px 16px; font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; background: var(--surface); border-bottom: 1px solid var(--border); }
+  td { padding: 14px 16px; border-bottom: 1px solid var(--border-faint); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--accent-subtle); }
+  .model-name { font-weight: 600; color: var(--text); }
+  .model-id { font-size: 12px; color: var(--text-faint); font-family: "SF Mono", monospace; display: block; margin-top: 2px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag-ctx { background: rgba(52, 211, 153, 0.1); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.15); }
+  .tag-think { background: rgba(240, 180, 41, 0.1); color: var(--accent); border: 1px solid rgba(240, 180, 41, 0.15); }
+  .cost { font-family: "SF Mono", monospace; font-size: 13px; }
+  .cost-label { color: var(--text-faint); font-size: 11px; }
+
+  /* ── Features ───────────────────────────── */
+  .features { padding: 0 0 80px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .feat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    transition: border-color .2s;
+  }
+  .feat-card:hover { border-color: var(--text-faint); }
+  .feat-card .icon { font-size: 24px; margin-bottom: 12px; display: block; }
+  .feat-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .feat-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── Auth ───────────────────────────────── */
+  .auth { padding: 0 0 80px; }
+  .auth-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    position: relative;
+  }
+  .auth-card .badge {
+    position: absolute; top: 16px; right: 16px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 4px;
+    background: rgba(52, 211, 153, 0.1); color: var(--green);
+    border: 1px solid rgba(52, 211, 153, 0.15);
+  }
+  .auth-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .auth-card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── CTA ────────────────────────────────── */
+  .cta { padding: 64px 0 80px; text-align: center; }
+  .cta h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .cta p { color: var(--text-muted); margin-bottom: 24px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #0a0a0a;
+    padding: 12px 24px; border-radius: var(--radius);
+    font-size: 15px; font-weight: 700; text-decoration: none;
+    transition: filter .2s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+
+  /* ── Footer ─────────────────────────────── */
+  footer { border-top: 1px solid var(--border); padding: 24px 0; }
+  footer .wrap { display: flex; justify-content: space-between; align-items: center; }
+  footer span { font-size: 13px; color: var(--text-faint); }
+  footer a { color: var(--text-muted); text-decoration: none; font-size: 13px; }
+  footer a:hover { color: var(--text); }
+
+  /* ── Responsive ─────────────────────────── */
+  @media (max-width: 768px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .auth-grid { grid-template-columns: 1fr; }
+    .hero { padding: 48px 0 40px; }
+    .install-block { padding: 12px 14px; }
+    .install-block code { font-size: 13px; }
+    .table-wrap { overflow-x: auto; }
+    table { min-width: 640px; }
+    .models, .features, .auth, .cta { padding-bottom: 48px; }
+  }
+  @media (max-width: 480px) {
+    .hero h1 { font-size: 28px; }
+    .hero p { font-size: 16px; }
+    .wrap { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">pi-<span>clinepass</span>-provider</div>
+    <a href="https://github.com/jellydn/pi-clinepass-provider" class="gh-link">View on GitHub →</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>Access <em>11 open-weight</em><br>coding models in pi</h1>
+    <p>Use GLM-5.2, Kimi K2.7, DeepSeek V4, Qwen3.7, and more through your ClinePass subscription — directly inside pi with full streaming, tool calls, and thinking level support.</p>
+    <div class="install-block">
+      <code>pi install npm:pi-clinepass-provider</code>
+      <button class="copy-btn" onclick="copyInstall(this)">Copy</button>
+    </div>
+    <p class="price-note">Requires a <a href="https://docs.cline.bot/getting-started/clinepass" style="color: var(--accent);">ClinePass subscription</a> — $9.99/month</p>
+  </div>
+</section>
+
+<section class="models">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Model catalog</h2>
+      <p>11 curated models with per-model thinking level support</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Context</th>
+            <th>Input</th>
+            <th>Output</th>
+            <th>Reasoning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="model-name">GLM-5.2</span>
+              <span class="model-id">cline-pass/glm-5.2</span>
+            </td>
+            <td><span class="tag tag-ctx">200K</span></td>
+            <td class="cost">$1.40<span class="cost-label">/M tok</span></td>
+            <td class="cost">$4.40<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off → xhigh</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">Kimi K2.7 Code</span>
+              <span class="model-id">cline-pass/kimi-k2.7-code</span>
+            </td>
+            <td><span class="tag tag-ctx">262K</span></td>
+            <td class="cost">$0.95<span class="cost-label">/M tok</span></td>
+            <td class="cost">$4.00<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">low → high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">Kimi K2.6</span>
+              <span class="model-id">cline-pass/kimi-k2.6</span>
+            </td>
+            <td><span class="tag tag-ctx">262K</span></td>
+            <td class="cost">$0.95<span class="cost-label">/M tok</span></td>
+            <td class="cost">$4.00<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">low → high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">Kimi K3</span>
+              <span class="model-id">cline-pass/kimi-k3</span>
+            </td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$3.00<span class="cost-label">/M tok</span></td>
+            <td class="cost">$15.00<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">max (always on)</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">DeepSeek V4 Pro</span>
+              <span class="model-id">cline-pass/deepseek-v4-pro</span>
+            </td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$1.74<span class="cost-label">/M tok</span></td>
+            <td class="cost">$3.48<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off / high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">DeepSeek V4 Flash</span>
+              <span class="model-id">cline-pass/deepseek-v4-flash</span>
+            </td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$0.14<span class="cost-label">/M tok</span></td>
+            <td class="cost">$0.28<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off / high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">MiMo-V2.5</span>
+              <span class="model-id">cline-pass/mimo-v2.5</span>
+            </td>
+            <td><span class="tag tag-ctx">262K</span></td>
+            <td class="cost">$0.14<span class="cost-label">/M tok</span></td>
+            <td class="cost">$0.28<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off → high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">MiMo-V2.5-Pro</span>
+              <span class="model-id">cline-pass/mimo-v2.5-pro</span>
+            </td>
+            <td><span class="tag tag-ctx">262K</span></td>
+            <td class="cost">$1.74<span class="cost-label">/M tok</span></td>
+            <td class="cost">$3.48<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off → high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">MiniMax M3</span>
+              <span class="model-id">cline-pass/minimax-m3</span>
+            </td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$0.30<span class="cost-label">/M tok</span></td>
+            <td class="cost">$1.20<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off → high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">Qwen3.7 Max</span>
+              <span class="model-id">cline-pass/qwen3.7-max</span>
+            </td>
+            <td><span class="tag tag-ctx">262K</span></td>
+            <td class="cost">$2.50<span class="cost-label">/M tok</span></td>
+            <td class="cost">$7.50<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off → high</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="model-name">Qwen3.7 Plus</span>
+              <span class="model-id">cline-pass/qwen3.7-plus</span>
+            </td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$0.40<span class="cost-label">/M tok</span></td>
+            <td class="cost">$1.60<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">off → high</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Why install?</h2>
+      <p>Everything you need to use ClinePass models directly in pi</p>
+    </div>
+    <div class="grid-3">
+      <div class="feat-card">
+        <span class="icon">↗</span>
+        <h3>Full streaming</h3>
+        <p>Native OpenAI-compatible streaming via pi's openai-completions — SSE parsing, tool calls, and usage tracking out of the box.</p>
+      </div>
+      <div class="feat-card">
+        <span class="icon">↔</span>
+        <h3>Per-model thinking</h3>
+        <p>Map pi's six thinking levels to each model's reasoning_effort. Set with --thinking and switch in-session with /thinking.</p>
+      </div>
+      <div class="feat-card">
+        <span class="icon">↘</span>
+        <h3>WorkOS OAuth</h3>
+        <p>Reuses your existing Cline CLI login — no separate API key needed. Tokens refresh automatically behind the scenes.</p>
+      </div>
+      <div class="feat-card">
+        <span class="icon">↘</span>
+        <h3>Dynamic discovery</h3>
+        <p>Fetches live model list from the Cline API at startup. Falls back to a curated static catalog if the endpoint is unavailable.</p>
+      </div>
+      <div class="feat-card">
+        <span class="icon">↘</span>
+        <h3>Cost tracking</h3>
+        <p>Per-token usage tracking against ClinePass reference pricing so you know exactly what each model session costs.</p>
+      </div>
+      <div class="feat-card">
+        <span class="icon">↘</span>
+        <h3>/login flow</h3>
+        <p>Auto-detects existing WorkOS credentials or falls back to browser-assisted manual API key paste in one command.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="auth">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Authentication</h2>
+      <p>Two paths — pick the one that fits</p>
+    </div>
+    <div class="auth-grid">
+      <div class="auth-card">
+        <span class="badge">Recommended</span>
+        <h3>Cline CLI login</h3>
+        <p>If you already use the Cline CLI and have run <code>cline auth</code>, this extension detects your WorkOS OAuth credentials automatically. Run <code>pi /login</code> and select ClinePass — no separate API key needed. Short-lived tokens refresh server-side.</p>
+      </div>
+      <div class="auth-card">
+        <h3>Static API key</h3>
+        <p>Generate an API key from <a href="https://app.cline.bot" style="color: var(--accent);">app.cline.bot</a> → Settings → API Keys. Set <code>CLINE_API_KEY</code> in your environment, or paste it during the <code>pi /login</code> flow. Keys never expire.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2>One command, 11 models.</h2>
+    <p>Install and start using open-weight models in pi today.</p>
+    <a href="https://github.com/jellydn/pi-clinepass-provider" class="btn">View on GitHub</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>MIT Licensed · v1.2.0 · by <a href="https://github.com/jellydn">jellydn</a></span>
+    <a href="https://www.npmjs.com/package/pi-clinepass-provider">npm ↗</a>
+  </div>
+</footer>
+
+<script>
+  function copyInstall(btn) {
+    navigator.clipboard.writeText('pi install npm:pi-clinepass-provider');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  }
+</script>
+</body>
+</html>
