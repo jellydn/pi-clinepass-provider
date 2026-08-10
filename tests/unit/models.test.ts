@@ -94,6 +94,28 @@ describe("MODELS", () => {
     }
   });
 
+  it("Qwen3.8 Max offers low/medium/xhigh only", () => {
+    // qwen3.8-max exposes three native reasoning_effort tiers — low, medium,
+    // xhigh (its default) — and no tier between medium and xhigh. "high" is
+    // therefore left unsupported (null) rather than aliased to xhigh, so every
+    // offered thinking level produces a distinct result; "minimal" is null for
+    // the same reason (no tier below low).
+    //
+    // "off" is null because thinking cannot be disabled through this path:
+    // the model only honours `enable_thinking: false`, which pi's
+    // openai-completions format never sends, so reasoning_effort="none" is
+    // ignored and the model keeps thinking. Offering "off" would be a no-op
+    // that misreports the model's state (same reasoning as Kimi K3).
+    const model = MODELS.find((m) => m.id === "cline-pass/qwen3.8-max")!;
+    const map = model.thinkingLevelMap;
+    expect(map.off).toBeNull();
+    expect(map.minimal).toBeNull();
+    expect(map.low).toBe("low");
+    expect(map.medium).toBe("medium");
+    expect(map.high).toBeNull();
+    expect(map.xhigh).toBe("xhigh");
+  });
+
   it("Kimi K2 models always reason but support standard efforts", () => {
     const kimiK2Models = ["cline-pass/kimi-k2.7-code", "cline-pass/kimi-k2.6"];
     for (const id of kimiK2Models) {

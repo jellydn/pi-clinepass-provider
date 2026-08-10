@@ -53,3 +53,17 @@ _(append below — newest at bottom)_
 - **Type:** learning
 - **Detail:** GitHub's review-comment REST endpoint requires `in_reply_to` as a JSON number; `gh api -f` serializes it as a string and is rejected.
 - **Follow-up:** use `gh api --input` with a JSON payload for inline replies.
+
+### 2026-08-10 — qwen3.8-max cannot disable thinking via reasoning_effort
+
+- **Context:** pre-PR review of the `cline-pass/qwen3.8-max` catalog entry
+- **Type:** issue
+- **Detail:** `off: "none"` is a no-op. Intercepting the wire (point `CLINE_API_BASE` at a local HTTP server) shows pi sends `reasoning_effort: "none"` for `--thinking off`, but qwen3.8-max's enum is only `low`/`medium`/`xhigh` (default `xhigh`) and thinking is disabled solely via `enable_thinking: false`. pi's default `openai` thinkingFormat never sends that field, so the value is ignored and the model keeps thinking while the UI reports "off". Setting `compat.thinkingFormat: "qwen"` does send `enable_thinking`, but that branch in `openai-completions.js` is an exclusive `else if` that then omits `reasoning_effort` entirely, losing all tier control.
+- **Follow-up:** set `off: null` so the level is not offered, matching the Kimi K3 precedent. Confirmed by test: `getSupportedThinkingLevels` drops null levels, leaving `low`/`medium`/`xhigh`.
+
+### 2026-08-10 — same reasoning_effort no-op likely affects qwen3.7 entries
+
+- **Context:** follow-on from the qwen3.8-max finding above
+- **Type:** issue
+- **Detail:** `cline-pass/qwen3.7-max` and `cline-pass/qwen3.7-plus` both declare `off: "none"`. A manual check against the live API showed qwen3.7 still thinks with thinking set to off, i.e. the same out-of-enum `reasoning_effort` behaviour.
+- **Follow-up:** left unchanged deliberately — out of scope for the Qwen3.8 Max PR. Worth a separate fix setting `off: null` on both entries after confirming against the provider docs.

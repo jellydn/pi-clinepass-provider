@@ -286,6 +286,28 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
       xhigh: null,
     },
   },
+  {
+    id: "cline-pass/qwen3.8-max",
+    name: "Qwen3.8 Max (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 2, output: 6, cacheRead: 0.25, cacheWrite: 2.5 },
+    contextWindow: 1_000_000,
+    maxTokens: 131_072,
+    // qwen3.8-max's reasoning_effort enum is low/medium/xhigh (default xhigh).
+    // Thinking can only be disabled via `enable_thinking: false`, which pi's
+    // openai-completions path never sends — reasoning_effort="none" is out of
+    // enum and silently ignored, leaving thinking on. "off" is therefore
+    // unsupported (null) rather than offered as a no-op, same as Kimi K3.
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: null,
+      xhigh: "xhigh",
+    },
+  },
 ];
 
 export const MODELS: readonly ModelConfig[] = MODELS_BASE.map((model) => ({

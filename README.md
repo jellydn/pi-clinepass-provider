@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
-> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 11 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.7, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
+> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 12 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
@@ -66,6 +66,7 @@ pnpm add pi-clinepass-provider
 | MiniMax M3        | `cline-pass/minimax-m3`        | 1M      | off / low / medium / high         |
 | Qwen3.7 Max       | `cline-pass/qwen3.7-max`       | 262K    | off / low / medium / high         |
 | Qwen3.7 Plus      | `cline-pass/qwen3.7-plus`      | 1M      | off / low / medium / high         |
+| Qwen3.8 Max       | `cline-pass/qwen3.8-max`       | 1M      | low / medium / xhigh              |
 
 > **Thinking levels**: pi supports 6 levels — `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. Each model declares which levels it supports, mapped to the provider's `reasoning_effort` parameter. Set the thinking level with pi's `--thinking` flag or `/thinking` command. A level marked as unsupported (not listed above) maps to `null` — no `reasoning_effort` is sent to the API, so the model runs with its default reasoning behavior.
 
