@@ -67,3 +67,10 @@ _(append below — newest at bottom)_
 - **Type:** issue
 - **Detail:** `cline-pass/qwen3.7-max` and `cline-pass/qwen3.7-plus` both declare `off: "none"`. A manual check against the live API showed qwen3.7 still thinks with thinking set to off, i.e. the same out-of-enum `reasoning_effort` behaviour.
 - **Follow-up:** left unchanged deliberately — out of scope for the Qwen3.8 Max PR. Worth a separate fix setting `off: null` on both entries after confirming against the provider docs.
+
+### 2026-08-21 — Qwen3.8 Max PR review gaps
+
+- **Context:** reviewing PR #55 before merge
+- **Type:** issue
+- **Detail:** the landing page implied an unsupported `high` reasoning level, architecture docs retained a stale line count, and the model-specific test did not pin catalog metadata.
+- **Follow-up:** listed the supported levels explicitly, removed the volatile line count, and added exact pricing and token-limit assertions.

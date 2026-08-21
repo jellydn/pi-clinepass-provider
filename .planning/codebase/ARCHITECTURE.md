@@ -38,7 +38,7 @@
 **Models (`src/models.ts`):**
 
 - Purpose: Static `MODELS` catalog + dynamic discovery (`fetchRemoteModels`, `resolveModels`). Per-model `thinkingLevelMap` maps pi's 6 thinking levels to ClinePass `reasoning_effort`.
-- Location: `src/models.ts` (412 lines — largest module)
+- Location: `src/models.ts` (largest module)
 - Depends on: `env.ts`, `utils.ts`.
 
 **Auth (`src/auth.ts`):**

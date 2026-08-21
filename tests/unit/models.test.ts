@@ -114,6 +114,14 @@ describe("MODELS", () => {
     expect(map.medium).toBe("medium");
     expect(map.high).toBeNull();
     expect(map.xhigh).toBe("xhigh");
+    expect(model.cost).toEqual({
+      input: 2,
+      output: 6,
+      cacheRead: 0.25,
+      cacheWrite: 2.5,
+    });
+    expect(model.contextWindow).toBe(1_000_000);
+    expect(model.maxTokens).toBe(131_072);
   });
 
   it("Kimi K2 models always reason but support standard efforts", () => {
