@@ -44,6 +44,16 @@
         "doc",
         "code"
       ]
+    },
+    {
+      "login": "cubicalbatch",
+      "name": "cubicalbatch",
+      "avatar_url": "https://avatars.githubusercontent.com/u/168123216?v=4",
+      "profile": "https://cubical.fyi",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "commitType": "docs",
