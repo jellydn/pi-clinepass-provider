@@ -1,6 +1,6 @@
 # 7: WorkOS Token Prefix Location
 
-**Date:** 2026-06-30  
+**Date:** 2026-06-30
 **Status:** Accepted
 
 ## Context
@@ -24,22 +24,22 @@ The inline string in `auth.ts` is a potential maintainability concern — if the
 
 Move `WORKOS_TOKEN_PREFIX` to `src/env.ts`, which both `auth.ts` and `workos.ts` already import. This eliminates the inline string without modifying the dependency graph.
 
-**Files changed**: `env.ts` (add constant), `workos.ts` (import from env), `auth.ts` (import from env, replace inline string).  
-**Pros**: Single source of truth. No circular dependency risk.  
+**Files changed**: `env.ts` (add constant), `workos.ts` (import from env), `auth.ts` (import from env, replace inline string).
+**Pros**: Single source of truth. No circular dependency risk.
 **Cons**: Touches 3 files for a 7-character string. `env.ts` becomes a grab-bag of unrelated constants. The prefix is WorkOS-specific, not environment-specific — it's conceptually wrong to put it in `env.ts`.
 
 ### Option B: Keep inline in `auth.ts` with a comment (current)
 
-**Files changed**: None.  
-**Pros**: No unnecessary churn. Dependency graph unchanged. The inline string is documented with a comment referencing the guard.  
+**Files changed**: None.
+**Pros**: No unnecessary churn. Dependency graph unchanged. The inline string is documented with a comment referencing the guard.
 **Cons**: Two sources of truth. A future maintainer changing `WORKOS_TOKEN_PREFIX` in `workos.ts` must remember to also update `auth.ts`.
 
 ### Option C: Extract to a shared constants file (`src/constants.ts`)
 
 Create a new `src/constants.ts` for shared constants used across modules. This avoids polluting `env.ts`.
 
-**Files changed**: `constants.ts` (new), `auth.ts`, `workos.ts`.  
-**Pros**: Clean separation. Single source of truth.  
+**Files changed**: `constants.ts` (new), `auth.ts`, `workos.ts`.
+**Pros**: Clean separation. Single source of truth.
 **Cons**: New file for a single constant. Premature abstraction given the stable nature of the prefix.
 
 ## Decision
@@ -51,3 +51,7 @@ Create a new `src/constants.ts` for shared constants used across modules. This a
 - **Positive**: Single source of truth for the prefix. No inline duplication. `workos.ts` re-exports from `env.ts` for backward compatibility (existing consumers like tests import from `workos.ts`).
 - **Negative**: `env.ts` now holds a WorkOS-specific constant, which is conceptually a protocol detail rather than an environment concern. However, `env.ts` already holds the provider name and other shared constants.
 - **Files changed**: `env.ts` (+2 lines), `auth.ts` (import + use constant), `workos.ts` (import from env + re-export).
+
+## Refinement (2026-07-01): Config-store extraction
+
+ADR-0008 moved `walkAuthPaths`, `walkClineProviderSettings`, and `defaultAuthPaths` from `auth.ts` to `config-store.ts`. The original decision driver that `workos.ts` imported traversal helpers from `auth.ts` — and that importing `WORKOS_TOKEN_PREFIX` from `workos.ts` into `auth.ts` would create a cycle — no longer applies to store traversal. Both modules now import traversal helpers from `config-store.ts`, while `WORKOS_TOKEN_PREFIX` remains in `env.ts`.

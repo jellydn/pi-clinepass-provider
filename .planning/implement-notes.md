@@ -82,6 +82,13 @@ _(append below — newest at bottom)_
 - **Detail:** `npm run format:check` passed because it covers only `src/` and `tests/`, while oxfmt 0.64 rejected four tracked JSON/Markdown files included by `prek.toml`.
 - **Follow-up:** formatted the affected tracked files with oxfmt 0.64 and verified the full `prek` file scope.
 
+### 2026-08-21 — config-store extraction conflict after WorkOS hardening
+
+- **Context:** updating PR #14 to current `main`
+- **Type:** learning
+- **Detail:** current WorkOS credential collection no longer uses `walkClineProviderSettings`, but it still shares `walkAuthPaths` and `AuthKeyOptions`; the old extraction branch conflicted only at that import boundary.
+- **Follow-up:** import the remaining shared APIs directly from `config-store.ts` and preserve the current WorkOS candidate-selection behavior.
+
 ### 2026-08-21 — Qwen3.8 Max PR review gaps
 
 - **Context:** reviewing PR #55 before merge

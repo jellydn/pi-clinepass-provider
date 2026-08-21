@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveApiKey, defaultAuthPaths } from "../../src/auth.js";
+import { resolveApiKey } from "../../src/auth.js";
 
 // ─── resolveApiKey ──────────────────────────────────────────────────────────
 
@@ -177,15 +177,5 @@ describe("resolveApiKey", () => {
       });
     const fileExists = () => true;
     expect(resolveApiKey(undefined, { readFile, fileExists })).toBeUndefined();
-  });
-});
-
-// ─── defaultAuthPaths ───────────────────────────────────────────────────────
-
-describe("defaultAuthPaths", () => {
-  it("includes Cline CLI providers.json and pi auth.json paths", () => {
-    const paths = defaultAuthPaths("/home/user");
-    expect(paths).toContain("/home/user/.cline/data/settings/providers.json");
-    expect(paths).toContain("/home/user/.pi/agent/auth.json");
   });
 });
