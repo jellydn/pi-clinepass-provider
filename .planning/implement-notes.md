@@ -54,6 +54,20 @@ _(append below — newest at bottom)_
 - **Detail:** GitHub's review-comment REST endpoint requires `in_reply_to` as a JSON number; `gh api -f` serializes it as a string and is rejected.
 - **Follow-up:** use `gh api --input` with a JSON payload for inline replies.
 
+### 2026-08-21 — synchronized pi dependency upgrades conflict in the lockfile
+
+- **Context:** merging Renovate PRs #49 and #50
+- **Type:** learning
+- **Detail:** the independent pi-ai and pi-coding-agent upgrades both rewrite the same package manifest and lockfile sections, so the second PR conflicts after the first lands.
+- **Follow-up:** combined both `^0.84.0` constraints on #50, regenerated the lockfile from current `main`, and reran the full quality matrix.
+
+### 2026-08-21 — oxfmt 0.64 expands repository-wide formatting changes
+
+- **Context:** reviewing Renovate PR #51 with the full `prek` file scope
+- **Type:** issue
+- **Detail:** `npm run format:check` passed because it covers only `src/` and `tests/`, while oxfmt 0.64 rejected four tracked JSON/Markdown files included by `prek.toml`.
+- **Follow-up:** formatted the affected tracked files with oxfmt 0.64 and verified the full `prek` file scope.
+
 ### 2026-08-21 — config-store extraction conflict after WorkOS hardening
 
 - **Context:** updating PR #14 to current `main`
