@@ -33,7 +33,8 @@ describe("isRecord", () => {
 
   it("returns false for functions", () => {
     expect(isRecord(() => {})).toBe(false);
-    expect(isRecord(class Foo {})).toBe(false);
+    function Foo() {}
+    expect(isRecord(Foo)).toBe(false);
   });
 
   it("returns true for Date instances (Date is a non-null, non-array object)", () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   modelIds,
   MODELS,
+  CLINEPASS_OPENAI_COMPAT,
   DEFAULT_THINKING_LEVEL_MAP,
   fetchRemoteModels,
   resolveModels,
@@ -16,6 +17,7 @@ describe("modelIds", () => {
     expect(ids).toHaveLength(MODELS.length);
     expect(ids).toContain("cline-pass/glm-5.2");
     expect(ids).toContain("cline-pass/kimi-k2.7-code");
+    expect(ids).toContain("cline-pass/kimi-k3");
     expect(ids).toContain("cline-pass/deepseek-v4-flash");
   });
 
@@ -92,9 +94,9 @@ describe("MODELS", () => {
     }
   });
 
-  it("always-reasoning models (Kimi) mark off as null, support others like standard", () => {
-    const alwaysOn = ["cline-pass/kimi-k2.7-code", "cline-pass/kimi-k2.6"];
-    for (const id of alwaysOn) {
+  it("Kimi K2 models always reason but support standard efforts", () => {
+    const kimiK2Models = ["cline-pass/kimi-k2.7-code", "cline-pass/kimi-k2.6"];
+    for (const id of kimiK2Models) {
       const model = MODELS.find((m) => m.id === id)!;
       const map = model.thinkingLevelMap;
       expect(map.off).toBeNull();
@@ -104,6 +106,18 @@ describe("MODELS", () => {
       expect(map.medium).toBe("medium");
       expect(map.high).toBe("high");
     }
+  });
+
+  it("Kimi K3 always reasons with max effort only", () => {
+    const model = MODELS.find((m) => m.id === "cline-pass/kimi-k3")!;
+    expect(model.thinkingLevelMap).toEqual({
+      off: null,
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "max",
+      xhigh: null,
+    });
   });
 
   it("DeepSeek V4 models only support high (and xhigh clamped to high)", () => {
@@ -127,12 +141,19 @@ describe("MODELS", () => {
     expect(map.low).toBe("low");
     expect(map.medium).toBe("medium");
     expect(map.high).toBe("high");
-    expect(map.xhigh).toBe("max");
+    expect(map.xhigh).toBe("xhigh");
   });
 
   it("maps pi off to none for GLM-5.2 (issue #17)", () => {
     const glm = MODELS.find((m) => m.id === "cline-pass/glm-5.2")!;
     expect(glm.thinkingLevelMap.off).toBe("none");
+  });
+
+  it("declares supportsDeveloperRole: false for every model (issue #31)", () => {
+    for (const model of MODELS) {
+      expect(model.compat).toEqual(CLINEPASS_OPENAI_COMPAT);
+      expect(model.compat.supportsDeveloperRole).toBe(false);
+    }
   });
 });
 
@@ -201,6 +222,7 @@ describe("fetchRemoteModels", () => {
     expect(result![0].thinkingLevelMap.off).toBe("none");
     expect(result![0].cost.input).toBeCloseTo(1.4, 1);
     expect(result![0].cost.output).toBeCloseTo(4.4, 1);
+    expect(result![0].compat.supportsDeveloperRole).toBe(false);
   });
 
   it("parses bare array response format", async () => {
@@ -248,6 +270,7 @@ describe("fetchRemoteModels", () => {
     expect(result![0].contextWindow).toBe(staticModel!.contextWindow);
     expect(result![0].maxTokens).toBe(staticModel!.maxTokens);
     expect(result![0].cost.input).toBe(staticModel!.cost.input);
+    expect(result![0].compat).toEqual(staticModel!.compat);
   });
 
   it("uses NO_THINKING_MAP when remote model reports reasoning: false", async () => {
@@ -277,6 +300,7 @@ describe("fetchRemoteModels", () => {
     const result = await fetchRemoteModels({ apiKey: "test_key" });
     expect(result).toHaveLength(1);
     expect(result![0].thinkingLevelMap).toEqual(DEFAULT_THINKING_LEVEL_MAP);
+    expect(result![0].compat.supportsDeveloperRole).toBe(false);
   });
 
   it("returns undefined for empty model list", async () => {

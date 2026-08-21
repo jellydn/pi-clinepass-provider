@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
-> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 10 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, DeepSeek V4, Qwen3.7, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
+> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 11 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.7, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
@@ -40,29 +40,34 @@ pnpm add pi-clinepass-provider
 
 ## Features
 
-- Full streaming via Cline's OpenAI-compatible `/api/v1/chat/completions` endpoint
-- Per-token cost tracking against ClinePass reference pricing
+- **Full streaming** via Cline's OpenAI-compatible `/api/v1/chat/completions` endpoint — SSE parsing, tool calls, and usage tracking handled by pi's built-in `openai-completions` streaming
+- **Per-model thinking level support** — maps pi's 6 thinking levels (`off` / `minimal` / `low` / `medium` / `high` / `xhigh`) to provider-specific `reasoning_effort` values, with per-model capability matrices (see table below)
+- **Per-token cost tracking** against ClinePass reference pricing
 - **WorkOS OAuth token refresh** — reuses your existing Cline CLI login (`cline auth`); no separate API key needed
-- API key auto-discovery from `CLINE_API_KEY` env var, `~/.cline/data/settings/providers.json`, or `~/.pi/agent/auth.json`
+- **API key auto-discovery** from `CLINE_API_KEY` env var, `~/.cline/data/settings/providers.json`, or `~/.pi/agent/auth.json`
 - **Dynamic model discovery** — fetches the live model list from the Cline API at startup, falling back to a curated static list on error
-- `/login` integration — automatic WorkOS OAuth detection or browser-assisted manual paste
+- **`/login` integration** — automatic WorkOS OAuth detection or browser-assisted manual paste
+- **Modular architecture** — 8 focused source modules (`env`, `auth`, `models`, `workos`, `oauth`, `error-handler`, `errors`, `utils`) + entry point (`index`), all covered by per-module unit tests
 
 ## Supported Models
 
 ![Models](models.png)
 
-| Model             | Model ID                       | Context |
-| :---------------- | :----------------------------- | :------ |
-| GLM-5.2           | `cline-pass/glm-5.2`           | 200K    |
-| Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    |
-| Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    |
-| DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   | 1M      |
-| DeepSeek V4 Flash | `cline-pass/deepseek-v4-flash` | 1M      |
-| MiMo-V2.5         | `cline-pass/mimo-v2.5`         | 262K    |
-| MiMo-V2.5-Pro     | `cline-pass/mimo-v2.5-pro`     | 262K    |
-| MiniMax M3        | `cline-pass/minimax-m3`        | 1M      |
-| Qwen3.7 Max       | `cline-pass/qwen3.7-max`       | 262K    |
-| Qwen3.7 Plus      | `cline-pass/qwen3.7-plus`      | 1M      |
+| Model             | Model ID                       | Context | Reasoning                         |
+| :---------------- | :----------------------------- | :------ | :-------------------------------- |
+| GLM-5.2           | `cline-pass/glm-5.2`           | 200K    | off / low / medium / high / xhigh |
+| Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    | low / medium / high               |
+| Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    | low / medium / high               |
+| Kimi K3           | `cline-pass/kimi-k3`           | 1M      | high (max; always on)              |
+| DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   | 1M      | off + high (high used for xhigh)  |
+| DeepSeek V4 Flash | `cline-pass/deepseek-v4-flash` | 1M      | off + high (high used for xhigh)  |
+| MiMo-V2.5         | `cline-pass/mimo-v2.5`         | 262K    | off / low / medium / high         |
+| MiMo-V2.5-Pro     | `cline-pass/mimo-v2.5-pro`     | 262K    | off / low / medium / high         |
+| MiniMax M3        | `cline-pass/minimax-m3`        | 1M      | off / low / medium / high         |
+| Qwen3.7 Max       | `cline-pass/qwen3.7-max`       | 262K    | off / low / medium / high         |
+| Qwen3.7 Plus      | `cline-pass/qwen3.7-plus`      | 1M      | off / low / medium / high         |
+
+> **Thinking levels**: pi supports 6 levels — `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. Each model declares which levels it supports, mapped to the provider's `reasoning_effort` parameter. Set the thinking level with pi's `--thinking` flag or `/thinking` command. A level marked as unsupported (not listed above) maps to `null` — no `reasoning_effort` is sent to the API, so the model runs with its default reasoning behavior.
 
 ## Authentication
 
@@ -123,6 +128,23 @@ pi --model clinepass/cline-pass/glm-5.2 --trust "Refactor the auth module"
 
 Switch models in-session with `/model clinepass/cline-pass/glm-5.2`.
 
+### Thinking levels
+
+Set the reasoning effort per model using pi's `--thinking` flag or the in-session `/thinking` command:
+
+```sh
+# Use high reasoning with DeepSeek V4 Pro
+pi --model clinepass/cline-pass/deepseek-v4-pro --thinking high -p "Design a scalable microservice architecture"
+
+# GLM-5.2 supports five levels up to xhigh
+pi --model clinepass/cline-pass/glm-5.2 --thinking xhigh -p "Solve this complex math proof"
+
+# Disable reasoning for a quick code gen task
+pi --model clinepass/cline-pass/deepseek-v4-flash --thinking off -p "Write a React form component"
+```
+
+Each model's supported thinking levels are listed in the [Supported Models](#supported-models) table above. Unsupported levels are not sent to the API — the model runs with its default reasoning behavior.
+
 ## Run tests
 
 ```sh
@@ -142,6 +164,10 @@ prek install
 - **Pricing**: ClinePass is a flat $9.99/month subscription. Per-token costs in the model table are reference values for usage tracking only.
 - **Context windows**: estimates from ClinePass docs — verify against Cline's `/models` endpoint.
 - **Custom API base**: set `CLINE_API_BASE` env var to override the endpoint (default: `https://api.cline.bot`).
+
+## Resources
+
+- **[opencode-clinepass-provider](https://github.com/haconglinh1990/opencode-clinepass-provider)** — ClinePass provider for [OpenCode](https://github.com/sst/opencode); same subscription and models outside of pi.
 
 ## 📄 License
 

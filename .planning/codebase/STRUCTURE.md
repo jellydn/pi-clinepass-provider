@@ -1,119 +1,164 @@
-# STRUCTURE.md — Directory Structure
+# Codebase Structure
 
-## Project Root
+**Analysis Date:** 2026-07-06
+
+## Directory Layout
 
 ```
 pi-clinepass-provider/
-├── src/                    # Source code (9 TypeScript modules)
-├── tests/                  # Test files
-│   ├── unit/               # Unit tests (8 files, 132 tests)
-│   └── e2e/                # E2E smoke test script
-├── .planning/              # Planning documents (codebase map)
-│   └── codebase/           # Generated codebase documentation
-├── doc/                    # Additional documentation
-├── .github/                # CI workflows
-├── node_modules/           # Dependencies (gitignored)
-├── CHANGELOG.md            # Release history
-├── README.md               # Project documentation
-├── LICENSE                 # MIT license
-├── package.json            # Package metadata + scripts
-├── package-lock.json       # Lockfile
-├── tsconfig.json           # TypeScript configuration
-├── vitest.config.ts        # Vitest configuration
-├── .oxlintrc.json          # Linter configuration
-├── .oxfmtrc.json           # Formatter configuration
-├── prek.toml               # Pre-commit hooks configuration
-├── renovate.json           # Dependency update automation
-├── AGENTS.md               # Agent guide for AI-assisted development
-├── .gitignore              # Git ignore rules
-├── .npmignore              # npm publish exclusions
-└── models.png              # Model screenshot/logo
+├── src/                      # Extension source (loaded directly by pi, no build)
+│   ├── index.ts              # Entry point — registers provider + error handler
+│   ├── env.ts                # Constants + env helpers (resolveApiBase, sanitizeApiKey)
+│   ├── utils.ts              # Pure type guards (isRecord, stringValue, ...)
+│   ├── models.ts             # Static MODELS catalog + dynamic discovery
+│   ├── auth.ts               # Static API key resolution + shared file-walking helpers
+│   ├── workos.ts             # WorkOS protocol adapter (prefix, refresh, extraction)
+│   ├── oauth.ts              # /login orchestration (WorkOS auto + manual paste)
+│   ├── errors.ts             # Pure error classification + message table
+│   └── error-handler.ts      # message_end handler: filter → classify → deliver
+├── tests/
+│   ├── unit/                 # 9 *.test.ts files, 1:1 with src modules
+│   ├── type/                 # contract.ts — compile-time ExtensionAPI conformance
+│   └── e2e/                  # smoke.sh — live API tests (needs CLINE_API_KEY)
+├── doc/
+│   └── adr/                  # ADR-0000..0007 (template + 7 decisions)
+├── .changeset/               # Pending changeset (patch: thinking-level off→none)
+├── .github/workflows/        # ci.yml (matrix tests + optional e2e)
+├── .planning/                # Generated codebase map + planning artifacts
+├── package.json              # Scripts, peer/dev deps, pi.extensions entry
+├── tsconfig.json             # strict, noEmit, ES2022
+├── vitest.config.ts          # tests/**/*.test.ts
+├── .oxlintrc.json            # lint config (test override for unicorn scoping)
+├── .oxfmtrc.json             # format config
+├── prek.toml                 # pre-commit hooks (oxlint, oxfmt, builtin checks)
+├── renovate.json             # Dep automation
+├── AGENTS.md                 # Agent-facing guide (NOTE: stale — see CONCERNS)
+├── CONTEXT.md                # Domain glossary (ClinePass terminology)
+├── CONTRIBUTING.md           # Dev setup + conventions
+├── CHANGELOG.md              # Release history
+├── RELEASE_CHECKLIST.md      # Release procedure
+└── README.md                 # User-facing docs
 ```
 
-## Source Modules (`src/`)
+## Directory Purposes
 
-```
-src/
-├── index.ts               # Extension entry point (67 lines)
-├── utils.ts               # Type guards (27 lines)
-├── env.ts                 # Constants, URL builder, sanitization (63 lines)
-├── errors.ts              # Error classification (68 lines)
-├── error-handler.ts       # Error pipeline handler (53 lines)
-├── models.ts              # Model definitions + discovery (223 lines)
-├── auth.ts                # API key resolution (150 lines)
-├── workos.ts              # WorkOS OAuth protocol (189 lines)
-└── oauth.ts               # Login / refresh flows (115 lines)
-```
+**`src/`:**
 
-### Dependency Graph
+- Purpose: All extension source. 9 modules, 1234 lines total. Loaded directly by pi (no build).
+- Contains: `.ts` modules only.
+- Key files: `index.ts` (entry), `models.ts` (412 lines — largest), `workos.ts` (247), `auth.ts` (166), `oauth.ts` (141).
 
-```
-utils.ts          ←  zero dependencies (leaf module)
-env.ts            ←  zero dependencies
-errors.ts         ←  zero dependencies
-error-handler.ts  ←  errors.ts, env.ts
-models.ts         ←  utils.ts, env.ts
-auth.ts           ←  utils.ts, env.ts
-workos.ts         ←  utils.ts, env.ts, auth.ts
-oauth.ts          ←  env.ts, workos.ts
-index.ts          ←  env.ts, auth.ts, models.ts, error-handler.ts, oauth.ts
-```
+**`tests/unit/`:**
 
-## Test Structure (`tests/`)
+- Purpose: Vitest unit tests with dependency injection (no FS/network).
+- Contains: 9 `*.test.ts` files mirroring `src/` 1:1. 147 tests total.
+- Key files: `workos.test.ts` (361 lines), `models.test.ts` (337), `oauth.test.ts` (320).
 
-```
-tests/
-├── unit/
-│   ├── auth.test.ts           # API key resolution (15 tests)
-│   ├── workos.test.ts         # WorkOS token extraction + refresh (17 tests)
-│   ├── oauth.test.ts          # Login / refresh dispatch (13 tests)
-│   ├── models.test.ts         # Model discovery + static fallback (14 tests)
-│   ├── errors.test.ts         # Error classification (13 tests)
-│   ├── error-handler.test.ts  # Error pipeline (9 tests)
-│   ├── env.test.ts            # Constants, API base, sanitization (17 tests)
-│   └── utils.test.ts          # Type guards (24 tests)
-└── e2e/
-    └── smoke.sh               # E2E smoke test (requires real API key + pi)
-```
+**`tests/type/`:**
 
-**Total: 132 unit tests across 8 files** (122 tests per summary; plus 10 from the earlier count evolution).
+- Purpose: Compile-time contract test. NOT a `.test.ts` file (so Vitest skips it); validated by `tsc`.
+- Key files: `contract.ts` (16 lines).
 
-## Key File Roles
+**`tests/e2e/`:**
 
-| File | Role |
-|------|------|
-| `src/index.ts` | Extension entry — receives `ExtensionAPI`, registers provider, wires error handler |
-| `src/auth.ts` | Resolves API key from multiple sources; exports `walkClineProviderSettings` shared helper |
-| `src/workos.ts` | All WorkOS-specific logic — token prefix, credential extraction, refresh protocol |
-| `src/oauth.ts` | pi `/login` flow — auto-detect WorkOS credentials or manual paste |
-| `src/models.ts` | Static model catalog (10 models) + dynamic model discovery with fallback |
-| `src/error-handler.ts` | Error surface — filter → classify → deliver pipeline |
-| `src/errors.ts` | Classification logic — maps API error messages to user-friendly messages |
-| `src/env.ts` | Constants, environment variable resolution, API key sanitization |
-| `src/utils.ts` | Shared type guards used across all modules |
+- Purpose: Live smoke tests against Cline's API.
+- Key files: `smoke.sh` (169 lines) — auth check, 4 model prompts, invalid-key/invalid-model cases.
 
-## npm Package Contents
+**`doc/adr/`:**
 
-Defined by `"files"` in `package.json`:
-- `src/` — all source modules
-- `tests/` — test files
-- `CHANGELOG.md`
-- `README.md`
-- `LICENSE`
+- Purpose: Architecture Decision Records. Context → Drivers → Options → Decision → Consequences.
+- Key files: `0000-adr-template.md`, `0001-use-openai-completions-streaming.md`, `0002-pure-logic-ioc-separation.md`, `0003-dual-auth-flow.md`, `0004-dynamic-model-discovery.md`, `0005-workos-token-refresh.md`, `0006-module-split-workos-adapter.md`, `0007-workos-token-prefix-location.md`.
 
-Excluded by `.npmignore`:
-- Source maps (`*.map`, `*.d.ts.map`)
-- Build artifacts (`dist/`, `*.tsbuildinfo`)
-- Git metadata (`.git/`, `.gitignore`, `.gitattributes`)
-- CI config (`.github/`)
-- Editor files (`.DS_Store`, `*.swp`, `*.swo`)
-- Test internals (`tests/**/__snapshots__/`, `tests/**/fixtures/`)
-- Documentation internals (`.planning/`, `doc/`)
+**`.planning/`:**
+
+- Purpose: Generated codebase map (this directory) + prior planning artifacts (`architecture-review.html`).
+- Generated: Yes (by the codemap skill). Committed: Yes.
+
+## Key File Locations
+
+**Entry Points:**
+
+- `src/index.ts`: Default export `async function (pi: ExtensionAPI)` — registers the `clinepass` provider.
+- `package.json` `pi.extensions`: `["./src/index.ts"]` — pi's pointer to the entry.
+
+**Configuration:**
+
+- `package.json`: Scripts, `engines.node >= 22`, peer/dev deps, `np` release config, `pi.extensions`.
+- `tsconfig.json`: `strict`, `noEmit`, `moduleResolution: bundler`, `include: [src/**/*.ts, tests/**/*.ts]`.
+- `vitest.config.ts`: `test.include: ["tests/**/*.test.ts"]` — excludes `tests/type/contract.ts`.
+- `.oxlintrc.json` / `.oxfmtrc.json`: lint/format.
+- `prek.toml`: pre-commit hooks.
+
+**Core Logic:**
+
+- `src/models.ts`: Model catalog + discovery (the largest, most central module).
+- `src/workos.ts`: WorkOS protocol (refresh, extraction, prefix).
+- `src/auth.ts`: Static key resolution + shared `walkAuthPaths`/`walkClineProviderSettings`.
+
+**Testing:**
+
+- `tests/unit/*.test.ts`: Unit tests (DI-mocked).
+- `tests/type/contract.ts`: Type contract.
+- `tests/e2e/smoke.sh`: E2E.
 
 ## Naming Conventions
 
-- **Files**: kebab-case (`error-handler.ts`, not `errorHandler.ts`)
-- **Directories**: lowercase (`src/`, `tests/`)
-- **Exports**: camelCase functions and types, SCREAMING_CASE constants
-- **Test files**: `<module>.test.ts` in `tests/unit/`
-- **Module JSDoc**: `@module clinepass-<module-name>` on every source file
+**Files:**
+
+- Source: `kebab-case.ts` (`error-handler.ts`, `workos.ts`). One concern per file.
+- Tests: `<module-name>.test.ts` matching the src module 1:1 (`auth.test.ts` ↔ `auth.ts`).
+- ADRs: `NNNN-kebab-case-title.md` (zero-padded 4 digits).
+
+**Directories:**
+
+- `kebab-case` for multi-word (none currently in src/); `unit`/`type`/`e2e` for test tiers.
+
+**Identifiers:**
+
+- Constants: `UPPER_SNAKE_CASE` (`DEFAULT_API_BASE`, `WORKOS_TOKEN_PREFIX`).
+- Functions: `camelCase` (`resolveApiKey`, `fetchRemoteModels`).
+- Types/interfaces: `PascalCase` (`ModelConfig`, `AuthKeyOptions`, `ClineAuthCredentials`).
+- Module IDs: `cline-pass/<slug>` (model IDs); provider name `clinepass` (no hyphen). Full pi model ref: `clinepass/cline-pass/<slug>`.
+
+## Where to Add New Code
+
+**New model:**
+
+- Add a `ModelConfig` entry to the `MODELS` array in `src/models.ts`. Declare all 6 thinking levels. ID must start with `cline-pass/`.
+- Tests: extend `tests/unit/models.test.ts` (the "always-reasoning"/"without-xhigh" group tests enumerate specific IDs — update if the new model fits a group).
+
+**New auth source / credential format:**
+
+- Extraction logic: `src/auth.ts` (static keys) or `src/workos.ts` (WorkOS creds). Add a path to `defaultAuthPaths` if it's a new file location.
+- Tests: `tests/unit/auth.test.ts` / `tests/unit/workos.test.ts` with injected `readFile`/`fileExists`.
+
+**New error category:**
+
+- Add to `ClinePassErrorType` + `CLINEPASS_ERROR_MESSAGES` in `src/errors.ts`, and a pattern branch in `classifyClinePassError`.
+- Tests: `tests/unit/errors.test.ts` + `tests/unit/error-handler.test.ts`.
+
+**New utility / shared helper:**
+
+- Pure type guards → `src/utils.ts`. Constants/env helpers → `src/env.ts`. Avoid new modules unless a distinct concern emerges (per ADR-0006's split philosophy; keep files < 300 lines).
+
+**New ADR:**
+
+- Copy `doc/adr/0000-adr-template.md` to `doc/adr/NNNN-*.md` (next number). Follow the Context → Drivers → Options → Decision → Consequences format.
+
+## Special Directories
+
+**`node_modules/`:**
+
+- Purpose: Dependencies. Generated by `npm install`. Committed: No (gitignored).
+
+**`.planning/`:**
+
+- Purpose: Generated codebase map + planning artifacts. Generated: Yes. Committed: Yes.
+
+**`.changeset/`:**
+
+- Purpose: Pending changesets for release notes. Generated: by changeset tooling. Committed: Yes.
+
+---
+
+_Structure analysis: 2026-07-06_

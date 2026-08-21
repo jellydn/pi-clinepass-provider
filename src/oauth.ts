@@ -41,6 +41,49 @@ function credentialsFromApiKey(apiKey: string): OAuthCredentials {
   };
 }
 
+async function loginWithManualApiKey(
+  callbacks: OAuthLoginCallbacks,
+  reason?: string,
+): Promise<OAuthCredentials> {
+  callbacks.onAuth({ url: DASHBOARD_URL });
+
+  const apiKey = sanitizeApiKey(
+    await callbacks.onPrompt({
+      message:
+        (reason ? `${reason} ` : "No Cline CLI login detected. ") +
+        "Paste your ClinePass API key " +
+        "(create one at the dashboard that just opened, under Settings → API Keys, " +
+        "or run `cline auth` first to use your Cline subscription):",
+    }),
+  );
+
+  if (!apiKey) throw new Error("No ClinePass API key provided");
+
+  if (apiKey.length < 20) {
+    console.warn(
+      `[clinepass] Warning: API key looks unusually short (${apiKey.length} chars). ` +
+        "Verify you copied the full key from app.cline.bot → Settings → API Keys.",
+    );
+  }
+
+  return credentialsFromApiKey(apiKey);
+}
+
+async function loginWithWorkosCredentials(
+  clineAuth: NonNullable<ReturnType<typeof resolveClineAuthCredentials>>,
+): Promise<OAuthCredentials> {
+  if (clineAuth.expiresAt <= Date.now() + WORKOS_REFRESH_MARGIN_MS) {
+    const tempCred = credentialsFromWorkos(
+      clineAuth.accessToken,
+      clineAuth.refreshToken,
+      clineAuth.expiresAt,
+    );
+    return refreshWorkosToken(tempCred);
+  }
+
+  return credentialsFromWorkos(clineAuth.accessToken, clineAuth.refreshToken, clineAuth.expiresAt);
+}
+
 // ─── Login flow ─────────────────────────────────────────────────────────────
 
 /**
@@ -55,54 +98,21 @@ function credentialsFromApiKey(apiKey: string): OAuthCredentials {
  * prompts them to paste it back.
  */
 export async function login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
-  // Try to reuse existing Cline CLI WorkOS credentials
   const clineAuth = resolveClineAuthCredentials();
   if (clineAuth) {
-    // No browser navigation needed — credentials are auto-detected from the
-    // Cline CLI's local config. Skip onAuth so no browser window opens.
-
-    // If the token is already expired, refresh it immediately
-    if (clineAuth.expiresAt <= Date.now() + WORKOS_REFRESH_MARGIN_MS) {
-      const tempCred = credentialsFromWorkos(
-        clineAuth.accessToken,
-        clineAuth.refreshToken,
-        clineAuth.expiresAt,
+    try {
+      return await loginWithWorkosCredentials(clineAuth);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[clinepass] WorkOS auto-login failed: ${message}`);
+      return loginWithManualApiKey(
+        callbacks,
+        "Cline subscription login failed (refresh token may be expired or network is unreachable).",
       );
-      return refreshWorkosToken(tempCred);
     }
-
-    return credentialsFromWorkos(
-      clineAuth.accessToken,
-      clineAuth.refreshToken,
-      clineAuth.expiresAt,
-    );
   }
 
-  // Fall back to manual API key paste
-  callbacks.onAuth({ url: DASHBOARD_URL });
-
-  const apiKey = sanitizeApiKey(
-    await callbacks.onPrompt({
-      message:
-        "No Cline CLI login detected. Paste your ClinePass API key " +
-        "(create one at the dashboard that just opened, under Settings → API Keys, " +
-        "or run `cline auth` first to use your Cline subscription):",
-    }),
-  );
-
-  if (!apiKey) throw new Error("No ClinePass API key provided");
-
-  // Lightweight format heuristic: Cline API keys are opaque strings, typically
-  // 20+ chars. Warn (don't block) on suspiciously short or whitespace-only input
-  // so users catch paste errors at login time rather than at first request.
-  if (apiKey.length < 20) {
-    console.warn(
-      `[clinepass] Warning: API key looks unusually short (${apiKey.length} chars). ` +
-        "Verify you copied the full key from app.cline.bot → Settings → API Keys.",
-    );
-  }
-
-  return credentialsFromApiKey(apiKey);
+  return loginWithManualApiKey(callbacks);
 }
 
 /**

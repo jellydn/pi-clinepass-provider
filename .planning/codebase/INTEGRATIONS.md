@@ -1,89 +1,108 @@
-# INTEGRATIONS.md — External Integrations
+# External Integrations
 
-## 1. ClinePass Chat API
+**Analysis Date:** 2026-07-06
 
-| Attribute | Detail |
-|-----------|--------|
-| **Provider** | Cline (cline.bot) |
-| **Base URL** | `https://api.cline.bot` (overridable via `CLINE_API_BASE` env var) |
-| **Endpoint** | `/api/v1/chat/completions` |
-| **Protocol** | OpenAI-compatible Chat Completions API |
-| **Auth** | Bearer token (API key or WorkOS access token prefixed with `workos:`) |
-| **Code location** | `src/env.ts` (constants), `src/index.ts` (registration) |
-| **Fallback** | None — API is the core data path |
+## APIs & External Services
 
-pi uses its built-in `openai-completions` streaming handler, so no custom stream parser is needed.
+**ClinePass Chat API (OpenAI-compatible):**
 
-### Override Mechanism
+- Service: Cline's `/api/v1/chat/completions` endpoint, base `https://api.cline.bot` (overridable via `CLINE_API_BASE`).
+- Purpose: Streaming chat completions for curated open-weight coding models (GLM-5.2, Kimi K2.7, DeepSeek V4, etc.). ClinePass is a $9.99/mo subscription gateway, not a model provider itself.
+- SDK/Client: None — pi's built-in `openai-completions` streaming handles SSE + tool calls + usage. The extension registers `api: "openai-completions"` and `authHeader: true`; no custom `streamSimple`.
+- Auth: `Authorization: Bearer <key>` header. Key resolved by `src/auth.ts` `resolveApiKey` (provided key → `CLINE_API_KEY` env → auth files). Sigil `$CLINE_API_KEY` passed to `pi.registerProvider` so pi injects the env var at request time.
 
-Set `CLINE_API_BASE` env var to point to a different endpoint (e.g., staging). The value is trimmed, empty values are ignored, and trailing slashes are stripped.
+**Cline Models API (dynamic discovery):**
 
-## 2. ClinePass Model Discovery API
+- Service: `GET /api/v1/models` (OpenAI-compatible `{ data: [...] }` or bare array).
+- Purpose: Fetch the live model list at extension startup. Only models with `cline-pass/`-prefixed IDs are kept.
+- SDK/Client: `globalThis.fetch` (injectable via `RemoteModelsOptions.fetch`).
+- Auth: `Authorization: Bearer <apiKey>` when an API key is available.
+- Resilience: 5s timeout (`MODELS_FETCH_TIMEOUT_MS`); returns `undefined` on any error (network, non-OK, parse, empty) → falls back to the static `MODELS` array in `src/models.ts`. **Note:** the endpoint currently returns 404, so static fallback is the live path today.
 
-| Attribute | Detail |
-|-----------|--------|
-| **Endpoint** | `/api/v1/models` |
-| **Protocol** | OpenAI-compatible model list (`{ data: [{ id, ... }] }` or bare array) |
-| **Timeout** | 5 seconds (`AbortController` with `AbortSignal.timeout`) |
-| **Code location** | `src/models.ts` |
-| **Fallback** | Static `MODELS` array (10 curated models) |
-| **Behavior** | Currently returns 404 — code falls back to static models gracefully |
+**Cline Auth Refresh (WorkOS OAuth):**
 
-The dynamic discovery path is forward-compatible: when Cline enables the `/models` endpoint, the extension will automatically pick up new models without a code change.
+- Service: `POST /api/v1/auth/refresh`.
+- Purpose: Exchange a WorkOS refresh token for a new short-lived access token (~1h) + rotated refresh token.
+- Request body: `{ "granttype": "refresh_token", "refreshToken": "<rt>" }` — **note `granttype` has no underscore** (Cline-specific quirk, see ADR-0005).
+- Response: `{ data: { accessToken, refreshToken } }` or flat `{ accessToken, refreshToken }`.
+- SDK/Client: `globalThis.fetch` (injectable via `WorkosRefreshOptions.fetch`), 15s timeout via `AbortSignal.timeout`.
+- Auth: None on this endpoint (the refresh token is the credential).
+- Gotcha: The returned access token may be a bare JWT — the `workos:` prefix is added if missing (`src/workos.ts` `refreshWorkosToken`). Refresh tokens are single-use and rotated on each call.
 
-## 3. WorkOS OAuth (via Cline CLI)
+## Data Storage
 
-| Attribute | Detail |
-|-----------|--------|
-| **Provider** | WorkOS (via Cline's infrastructure) |
-| **Token prefix** | `workos:` |
-| **Token lifetime** | ~1 hour |
-| **Refresh margin** | 5 minutes before expiry |
-| **Refresh endpoint** | `/api/v1/auth/refresh` |
-| **Refresh body** | `{ granttype: "refresh_token", refreshToken: "..." }` |
-| **Refresh response** | `{ data: { accessToken, refreshToken } }` |
-| **Code location** | `src/workos.ts` (extraction + refresh), `src/oauth.ts` (login flow), `src/auth.ts` (guard) |
-| **Credential source** | `~/.cline/data/settings/providers.json` (providers["cline-pass"] or providers["cline"]) |
+**Databases:**
 
-### Token Flow
+- None. No database, no ORM.
 
-1. **Extraction**: `resolveClineAuthCredentials()` reads WorkOS tokens from Cline CLI's local config
-2. **Login**: `login()` auto-detects Cline CLI credentials; refreshes if expired; falls back to manual API key paste
-3. **Refresh**: `refreshToken()` detects `workos:` prefix and delegates to `refreshWorkosToken()`
-4. **Guard**: `resolveApiKey()` skips `workos:`-prefixed tokens in the pi `auth.json` path (they are short-lived and should not be returned as static keys)
+**File Storage:**
 
-## 4. pi Runtime
+- Local filesystem only — reads (never writes) two credential stores:
+  - `~/.cline/data/settings/providers.json` — Cline CLI nested format: `providers["cline-pass"|"cline"].settings.{apiKey | auth.{accessToken,refreshToken,expiresAt}}`.
+  - `~/.pi/agent/auth.json` — pi OAuth format: `{apiKey}` | `{clinepass: "..."}` | `{clinepass: {access, refresh, expires}}`.
+- Writes: pi itself persists OAuth credentials to `~/.pi/agent/auth.json` after `/login`; the extension only reads.
 
-| Attribute | Detail |
-|-----------|--------|
-| **Entry point** | `ExtensionAPI` received via default export in `src/index.ts` |
-| **Registration** | `pi.registerProvider()` with name, base URL, API key reference, OAuth hooks, and models |
-| **Error surface** | `pi.on("message_end", handler)` for ClinePass-specific error messages |
-| **OAuth hooks** | `login()`, `refreshToken()`, `getApiKey()` |
-| **Code location** | `src/index.ts` |
+**Caching:**
 
-## 5. npm
+- None. Model list is fetched once at startup; no in-memory cache beyond the registered models.
 
-| Attribute | Detail |
-|-----------|--------|
-| **Registry** | npm (public) |
-| **Package name** | `pi-clinepass-provider` |
-| **Install command** | `pi install npm:pi-clinepass-provider` |
-| **Publish** | `npm run pub` (wraps `npm publish`) |
+## Authentication & Identity
 
-## 6. Cline Dashboard
+**Auth Provider:** WorkOS (via Cline's OAuth flow) + Cline static API keys (dual auth).
 
-| Attribute | Detail |
-|-----------|--------|
-| **URL** | `https://app.cline.bot/settings/api-keys` |
-| **Purpose** | Manual API key creation (browser-assisted paste during `/login`) |
-| **Code location** | `src/oauth.ts` (`DASHBOARD_URL` constant) |
+- Implementation: `src/oauth.ts` (orchestration) + `src/workos.ts` (protocol adapter). Two paths:
+  1. **WorkOS OAuth (automatic)** — if the user ran `cline auth`, reuse WorkOS credentials from `~/.cline/data/settings/providers.json`; refresh via Cline's `/api/v1/auth/refresh`. Tokens prefixed `workos:`.
+  2. **Static API key (manual)** — long-lived bearer token from `app.cline.bot → Settings → API Keys`; pasted during `pi /login` if no Cline CLI login is found. Treated as 10-year expiry.
+- `refreshToken()` auto-detects WorkOS vs static by checking the `workos:` prefix on `credentials.access`.
+- Token sanitization (`src/env.ts` `sanitizeApiKey`): strips terminal bracketed-paste wrappers (`\x1b[200~`/`[201~`) and control chars from pasted keys.
 
-## No Other Integrations
+## Monitoring & Observability
 
-The extension does **not** integrate with:
-- External databases
-- Third-party auth providers (WorkOS is via Cline, not direct)
-- Webhooks or event systems
-- Caching layers
-- Monitoring or analytics services
+**Error Tracking:**
+
+- None (no Sentry/external). Errors surface through pi's UI.
+
+**Logs:**
+
+- `console.warn` / `console.error` with `[clinepass]` prefix. Used for: corrupt auth files, short API keys, WorkOS auto-login failures, and the no-UI fallback in `handleClinePassError`. **Never logs file contents or resolved keys.**
+
+## CI/CD & Deployment
+
+**Hosting:**
+
+- npm registry (`npm publish`). The package is consumed by pi installations; no hosting infrastructure.
+
+**CI Pipeline:**
+
+- GitHub Actions, `.github/workflows/ci.yml`.
+- `test` job: 3-matrix (latest+Node22, min-pi-0.80.2+Node22, latest+Node24). Runs `npm ci`, optional pi-version pin, `lint`, `typecheck`, `format:check`, `npm test`. Triggered on push/PR to `main`.
+- `e2e` job: runs only on `workflow_dispatch` with `run_e2e=true` + `CLINE_API_KEY` secret. Installs pi globally and runs `tests/e2e/smoke.sh`.
+- Dependency updates: Renovate (`renovate.json`).
+
+## Environment Configuration
+
+**Required env vars:**
+
+- `CLINE_API_KEY` — required for non-`/login` usage unless credentials exist in the auth files. (Strictly optional if WorkOS creds are present, but needed for dynamic model discovery and static-key auth.)
+
+**Optional env vars:**
+
+- `CLINE_API_BASE` — override API endpoint (default `https://api.cline.bot`).
+
+**Secrets location:**
+
+- `CLINE_API_KEY` in the shell environment, or in `~/.cline/data/settings/providers.json` / `~/.pi/agent/auth.json`. CI uses `secrets.CLINE_API_KEY` (E2E only).
+
+## Webhooks & Callbacks
+
+**Incoming:**
+
+- None.
+
+**Outgoing:**
+
+- `pi.on("message_end", handleClinePassError)` — the extension subscribes to pi's `message_end` event to classify and surface ClinePass errors (403/401/429). Not a webhook; an in-process event subscription.
+
+---
+
+_Integration audit: 2026-07-06_

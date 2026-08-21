@@ -1,6 +1,6 @@
 {
   "name": "pi-clinepass-provider",
-  "version": "1.0.5",
+  "version": "1.2.0",
   "description": "ClinePass provider for pi — access GLM-5.2, Kimi K2.7, DeepSeek V4 and more open-weight coding models through Cline's $9.99/mo subscription",
   "keywords": [
     "ai",
@@ -56,15 +56,15 @@
     "pub": "npm publish"
   },
   "devDependencies": {
-    "@earendil-works/pi-ai": "^0.80.2",
+    "@earendil-works/pi-ai": "^0.84.0",
     "@earendil-works/pi-coding-agent": "^0.80.2",
     "@types/node": "^26.0.1",
     "all-contributors-cli": "^6.26.1",
     "bumpp": "^11.1.0",
-    "np": "^11.2.1",
-    "oxfmt": "^0.57.0",
+    "np": "^12.0.0",
+    "oxfmt": "^0.59.0",
     "oxlint": "^1.71.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.0",
     "vitest": "^4.1.5"
   },
   "peerDependencies": {

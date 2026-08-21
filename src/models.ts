@@ -47,6 +47,22 @@ export const NO_THINKING_MAP: ThinkingLevelMap = {
 };
 
 /**
+ * OpenAI-compat flags for ClinePass chat completions.
+ *
+ * ClinePass only accepts classic roles (`system`, `assistant`, `user`, `tool`,
+ * `function`). pi-ai defaults to `developer` for reasoning models unless
+ * `supportsDeveloperRole` is false (see pi-ai README).
+ */
+export interface ClinePassOpenAICompat {
+  readonly supportsDeveloperRole: boolean;
+  readonly thinkingFormat?: string;
+}
+
+export const CLINEPASS_OPENAI_COMPAT: ClinePassOpenAICompat = {
+  supportsDeveloperRole: false,
+};
+
+/**
  * ClinePass curated open-weight coding models.
  *
  * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.2") as
@@ -71,9 +87,16 @@ export interface ModelConfig {
    * declare all six levels explicitly — there are no implicit defaults.
    */
   thinkingLevelMap: ThinkingLevelMap;
+  /** pi-ai openai-completions compat overrides for the ClinePass API. */
+  compat: ClinePassOpenAICompat;
 }
 
-export const MODELS: readonly ModelConfig[] = [
+/** Static catalog entries; per-model compat overrides merge with CLINEPASS_OPENAI_COMPAT. */
+interface ModelConfigBase extends Omit<ModelConfig, "compat"> {
+  compat?: Partial<ClinePassOpenAICompat>;
+}
+
+const MODELS_BASE: readonly ModelConfigBase[] = [
   {
     id: "cline-pass/glm-5.2",
     name: "GLM-5.2 (ClinePass)",
@@ -88,7 +111,7 @@ export const MODELS: readonly ModelConfig[] = [
       low: "low",
       medium: "medium",
       high: "high",
-      xhigh: "max",
+      xhigh: "xhigh",
     },
   },
   {
@@ -122,6 +145,24 @@ export const MODELS: readonly ModelConfig[] = [
       low: "low",
       medium: "medium",
       high: "high",
+      xhigh: null,
+    },
+  },
+  {
+    id: "cline-pass/kimi-k3",
+    name: "Kimi K3 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+    // K3 always reasons and currently only supports reasoning_effort="max".
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "max",
       xhigh: null,
     },
   },
@@ -247,6 +288,14 @@ export const MODELS: readonly ModelConfig[] = [
   },
 ];
 
+export const MODELS: readonly ModelConfig[] = MODELS_BASE.map((model) => ({
+  ...model,
+  compat: {
+    ...CLINEPASS_OPENAI_COMPAT,
+    ...model.compat,
+  },
+}));
+
 /**
  * Return the model IDs registered for the ClinePass provider.
  */
@@ -315,6 +364,10 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
     thinkingLevelMap: reasoning
       ? (fallback?.thinkingLevelMap ?? DEFAULT_THINKING_LEVEL_MAP)
       : NO_THINKING_MAP,
+    compat: {
+      ...CLINEPASS_OPENAI_COMPAT,
+      ...fallback?.compat,
+    },
   };
 }
 

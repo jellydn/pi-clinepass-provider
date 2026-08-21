@@ -25,13 +25,11 @@ import { resolveModels } from "./models.js";
 import { handleClinePassError } from "./error-handler.js";
 import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
-// Note on compat/thinkingFormat: ClinePass exposes a standard OpenAI-compatible
-// Chat Completions API (per docs.cline.bot). Cline's infrastructure normalizes
-// the upstream models (GLM, Kimi, DeepSeek, etc.) to this format, so pi's
-// built-in openai-completions streaming and default thinking handling work
-// without per-model compat overrides. If reasoning is found to not work
-// correctly for a specific model through the live API, add a model-level
-// compat override here (e.g. compat: { thinkingFormat: "zai" } for GLM).
+// ClinePass exposes OpenAI-compatible chat completions, but rejects the
+// `developer` role pi-ai uses by default for reasoning models. Every model
+// declares `compat.supportsDeveloperRole: false` in models.ts so system
+// prompts use `system`. Per-model thinkingFormat overrides remain available
+// if a specific upstream model needs them (e.g. compat.thinkingFormat: "zai").
 
 // ─── Extension Entry Point ─────────────────────────────────────────────────
 
@@ -44,10 +42,15 @@ export default async function (pi: ExtensionAPI) {
   const apiKey = resolveApiKey();
   const models = await resolveModels(apiKey, { apiBase });
 
+  // Only register the $CLINE_API_KEY sigil when the env var is set at extension
+  // load time. OAuth-only installs should not advertise an unconfigured env-key
+  // fallback; when present, the $… form resolves the secret at request time.
+  const envApiKey = process.env[ENV_API_KEY]?.trim();
+
   pi.registerProvider(PROVIDER_NAME, {
     name: "ClinePass",
     baseUrl: `${apiBase}/api/v1`,
-    apiKey: `$${ENV_API_KEY}`,
+    ...(envApiKey ? { apiKey: `$${ENV_API_KEY}` } : {}),
     authHeader: true,
     // ClinePass uses the standard OpenAI Chat Completions format, so pi's
     // built-in openai-completions streaming handles SSE + tool calls + usage.
