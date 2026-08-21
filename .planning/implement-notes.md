@@ -68,6 +68,20 @@ _(append below — newest at bottom)_
 - **Detail:** `cline-pass/qwen3.7-max` and `cline-pass/qwen3.7-plus` both declare `off: "none"`. A manual check against the live API showed qwen3.7 still thinks with thinking set to off, i.e. the same out-of-enum `reasoning_effort` behaviour.
 - **Follow-up:** left unchanged deliberately — out of scope for the Qwen3.8 Max PR. Worth a separate fix setting `off: null` on both entries after confirming against the provider docs.
 
+### 2026-08-21 — synchronized pi dependency upgrades conflict in the lockfile
+
+- **Context:** merging Renovate PRs #49 and #50
+- **Type:** learning
+- **Detail:** the independent pi-ai and pi-coding-agent upgrades both rewrite the same package manifest and lockfile sections, so the second PR conflicts after the first lands.
+- **Follow-up:** combined both `^0.84.0` constraints on #50, regenerated the lockfile from current `main`, and reran the full quality matrix.
+
+### 2026-08-21 — oxfmt 0.64 expands repository-wide formatting changes
+
+- **Context:** reviewing Renovate PR #51 with the full `prek` file scope
+- **Type:** issue
+- **Detail:** `npm run format:check` passed because it covers only `src/` and `tests/`, while oxfmt 0.64 rejected four tracked JSON/Markdown files included by `prek.toml`.
+- **Follow-up:** formatted the affected tracked files with oxfmt 0.64 and verified the full `prek` file scope.
+
 ### 2026-08-21 — Qwen3.8 Max PR review gaps
 
 - **Context:** reviewing PR #55 before merge

@@ -58,7 +58,7 @@ pnpm add pi-clinepass-provider
 | GLM-5.2           | `cline-pass/glm-5.2`           | 200K    | off / low / medium / high / xhigh |
 | Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    | low / medium / high               |
 | Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    | low / medium / high               |
-| Kimi K3           | `cline-pass/kimi-k3`           | 1M      | high (max; always on)              |
+| Kimi K3           | `cline-pass/kimi-k3`           | 1M      | high (max; always on)             |
 | DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   | 1M      | off + high (high used for xhigh)  |
 | DeepSeek V4 Flash | `cline-pass/deepseek-v4-flash` | 1M      | off + high (high used for xhigh)  |
 | MiMo-V2.5         | `cline-pass/mimo-v2.5`         | 262K    | off / low / medium / high         |

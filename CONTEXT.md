@@ -44,6 +44,7 @@ The process of exchanging a WorkOS refresh token for a new access token via Clin
 ### Credential Store
 
 A JSON file that pi uses to persist OAuth credentials. Two formats exist:
+
 - **Cline CLI store**: `~/.cline/data/settings/providers.json` — nested provider structure with `apiKey` (static) or `auth.accessToken` + `auth.refreshToken` (WorkOS OAuth)
 - **pi auth store**: `~/.pi/agent/auth.json` — flat or object structure with `apiKey`, `clinepass` (string), or `clinepass.access` (OAuth object)
 
@@ -70,6 +71,7 @@ A per-model configuration that tells pi how to handle model-specific behaviors (
 ### Error Classification
 
 Mapping raw API error messages to user-friendly, actionable messages. Three categories:
+
 - **Not subscribed** (403, forbidden) — user lacks a ClinePass subscription
 - **Auth expired** (401, unauthorized, invalid API key) — credentials need refresh
 - **Rate limited** (429, too many requests) — temporary throttle
