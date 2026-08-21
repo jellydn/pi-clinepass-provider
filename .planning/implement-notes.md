@@ -53,3 +53,10 @@ _(append below — newest at bottom)_
 - **Type:** learning
 - **Detail:** GitHub's review-comment REST endpoint requires `in_reply_to` as a JSON number; `gh api -f` serializes it as a string and is rejected.
 - **Follow-up:** use `gh api --input` with a JSON payload for inline replies.
+
+### 2026-08-21 — oxfmt 0.64 expands repository-wide formatting changes
+
+- **Context:** reviewing Renovate PR #51 with the full `prek` file scope
+- **Type:** issue
+- **Detail:** `npm run format:check` passed because it covers only `src/` and `tests/`, while oxfmt 0.64 rejected four tracked JSON/Markdown files included by `prek.toml`.
+- **Follow-up:** formatted the affected tracked files with oxfmt 0.64 and verified the full `prek` file scope.
