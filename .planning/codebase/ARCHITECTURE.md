@@ -38,7 +38,7 @@
 **Models (`src/models.ts`):**
 
 - Purpose: Static `MODELS` catalog + dynamic discovery (`fetchRemoteModels`, `resolveModels`). Per-model `thinkingLevelMap` maps pi's 6 thinking levels to ClinePass `reasoning_effort`.
-- Location: `src/models.ts` (412 lines — largest module)
+- Location: `src/models.ts` (largest module)
 - Depends on: `env.ts`, `utils.ts`.
 
 **Auth (`src/auth.ts`):**
@@ -110,7 +110,7 @@
 **`ModelConfig` + `thinkingLevelMap`:**
 
 - Purpose: Declares a model's capabilities and the explicit mapping of pi's 6 thinking levels (`off|minimal|low|medium|high|xhigh`) to ClinePass `reasoning_effort` strings, or `null` (unsupported).
-- Examples: `src/models.ts` (11 static models + `DEFAULT_THINKING_LEVEL_MAP` / `NO_THINKING_MAP` for remote models).
+- Examples: `src/models.ts` (12 static models + `DEFAULT_THINKING_LEVEL_MAP` / `NO_THINKING_MAP` for remote models).
 - Pattern: Readonly `Record<ThinkingLevel, string|null>` — every model must declare all six levels (no implicit defaults). `off` maps to `"none"` for models that can disable reasoning; `null` for always-reasoning models (Kimi).
 
 **Injectable I/O options:**
