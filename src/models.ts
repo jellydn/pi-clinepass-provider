@@ -98,6 +98,31 @@ interface ModelConfigBase extends Omit<ModelConfig, "compat"> {
 
 const MODELS_BASE: readonly ModelConfigBase[] = [
   {
+    id: "cline-pass/glm-5.3",
+    name: "GLM-5.3 (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+    // GLM-5.3 (Z.ai) always reasons and cannot be disabled — its
+    // reasoning_effort enum is low/high/max (default max), with no "medium"
+    // or "xhigh" tier. "off"/"minimal" are null because thinking can't be
+    // turned off and there is no tier below low; "medium" is null for the
+    // same enum-gap reason. pi's "xhigh" maps to "max", the extra-high
+    // tier, so every offered level (low/high/xhigh) is distinct and
+    // increasing — mirroring Kimi K3's use of "max" and Qwen3.8-max's
+    // sparse-level pattern.
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: "low",
+      medium: null,
+      high: "high",
+      xhigh: "max",
+    },
+  },
+  {
     id: "cline-pass/glm-5.2",
     name: "GLM-5.2 (ClinePass)",
     reasoning: true,
