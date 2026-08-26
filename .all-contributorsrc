@@ -54,6 +54,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "rinaldo-rex",
+      "name": "Rinaldo Rex",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6716912?v=4",
+      "profile": "https://rinaldo-rex.github.io/",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "commitType": "docs",
