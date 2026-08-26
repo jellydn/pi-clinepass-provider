@@ -55,7 +55,7 @@ pnpm add pi-clinepass-provider
 
 | Model             | Model ID                       | Context | Reasoning                         |
 | :---------------- | :----------------------------- | :------ | :-------------------------------- |
-| GLM-5.3           | `cline-pass/glm-5.3`           | 1M      | low / high / max (always on)      |
+| GLM-5.3           | `cline-pass/glm-5.3`           | 1M      | low / high / xhigh (xhigh → max; always on) |
 | GLM-5.2           | `cline-pass/glm-5.2`           | 200K    | off / low / medium / high / xhigh |
 | Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    | low / medium / high               |
 | Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    | low / medium / high               |
