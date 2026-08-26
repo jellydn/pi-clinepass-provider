@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **GLM-5.3 model** — registered `cline-pass/glm-5.3` (Z.ai) in the static catalog with 1M context / 128K output. GLM-5.3 always reasons and cannot be disabled; its `reasoning_effort` enum is `low`/`high`/`max` (default `max`) with no `medium` or `xhigh` tier, so pi's `off`/`minimal`/`medium` map to `null` and `xhigh` maps to `max` (every offered level distinct and increasing). Pricing mirrors GLM-5.2 per the ClinePass docs ($1.40/$4.40/$0.26).
+
 ### Docs
 
 - **Thinking levels usage guide** — added Reasoning column to Supported Models table showing per-model thinking level capabilities (off/minimal/low/medium/high/xhigh), plus `--thinking` flag examples in Usage section ([#17](https://github.com/jellydn/pi-clinepass-provider/issues/17))
