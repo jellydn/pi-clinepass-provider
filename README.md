@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
-> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 12 curated open-weight coding models (GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
+> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 13 curated open-weight coding models (GLM-5.3, GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
@@ -55,6 +55,7 @@ pnpm add pi-clinepass-provider
 
 | Model             | Model ID                       | Context | Reasoning                         |
 | :---------------- | :----------------------------- | :------ | :-------------------------------- |
+| GLM-5.3           | `cline-pass/glm-5.3`           | 1M      | low / high / xhigh (xhigh → max; always on) |
 | GLM-5.2           | `cline-pass/glm-5.2`           | 200K    | off / low / medium / high / xhigh |
 | Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    | low / medium / high               |
 | Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    | low / medium / high               |
@@ -139,6 +140,9 @@ pi --model clinepass/cline-pass/deepseek-v4-pro --thinking high -p "Design a sca
 
 # GLM-5.2 supports five levels up to xhigh
 pi --model clinepass/cline-pass/glm-5.2 --thinking xhigh -p "Solve this complex math proof"
+
+# GLM-5.3 always reasons; pick low/high/max effort (xhigh → max)
+pi --model clinepass/cline-pass/glm-5.3 --thinking xhigh -p "Refactor this monolith into services"
 
 # Disable reasoning for a quick code gen task
 pi --model clinepass/cline-pass/deepseek-v4-flash --thinking off -p "Write a React form component"

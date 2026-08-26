@@ -15,6 +15,7 @@ describe("modelIds", () => {
   it("returns all model IDs", () => {
     const ids = modelIds();
     expect(ids).toHaveLength(MODELS.length);
+    expect(ids).toContain("cline-pass/glm-5.3");
     expect(ids).toContain("cline-pass/glm-5.2");
     expect(ids).toContain("cline-pass/kimi-k2.7-code");
     expect(ids).toContain("cline-pass/kimi-k3");
@@ -172,6 +173,32 @@ describe("MODELS", () => {
     expect(map.medium).toBe("medium");
     expect(map.high).toBe("high");
     expect(map.xhigh).toBe("xhigh");
+  });
+
+  it("GLM-5.3 supports low/high/max only (thinking always on)", () => {
+    // GLM-5.3 (Z.ai) always reasons and cannot be disabled; its
+    // reasoning_effort enum is low/high/max (default max) with no "medium"
+    // or "xhigh" tier. "off"/"minimal"/"medium" are null (no corresponding
+    // tier, and thinking can't be turned off); pi's "xhigh" maps to "max",
+    // the extra-high tier, so every offered level is distinct and
+    // increasing. Pricing/context mirror GLM-5.2 per the ClinePass docs.
+    const model = MODELS.find((m) => m.id === "cline-pass/glm-5.3")!;
+    const map = model.thinkingLevelMap;
+    expect(map.off).toBeNull();
+    expect(map.minimal).toBeNull();
+    expect(map.low).toBe("low");
+    expect(map.medium).toBeNull();
+    expect(map.high).toBe("high");
+    expect(map.xhigh).toBe("max");
+    expect(model.cost).toEqual({
+      input: 1.4,
+      output: 4.4,
+      cacheRead: 0.26,
+      cacheWrite: 0,
+    });
+    expect(model.contextWindow).toBe(1_048_576);
+    expect(model.maxTokens).toBe(131_072);
+    expect(model.reasoning).toBe(true);
   });
 
   it("maps pi off to none for GLM-5.2 (issue #17)", () => {
