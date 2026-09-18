@@ -115,6 +115,11 @@ run_test "GLM-5.3-Flash (simple math)" \
   "What is 4+5? Answer with just the number." \
   "9"
 
+run_test "Muse Spark 1.3 Contributor (simple math)" \
+  "cline-pass/muse-spark-1.3-contributor" \
+  "What is 7+6? Answer with just the number." \
+  "13"
+
 echo ""
 
 # ─── Error Handling ──────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pi-clinepass-provider — ClinePass for pi</title>
-<meta name="description" content="12 curated open-weight coding models through Cline's $9.99/month subscription, directly in pi">
+<meta name="description" content="12 curated coding models through Cline's $9.99/month subscription, directly in pi">
 <meta name="color-scheme" content="dark">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -101,6 +101,7 @@
 
   /* ── Model Table ────────────────────────── */
   .models { padding: 0 0 80px; }
+  .models .wrap > p { margin-top: 16px; font-size: 14px; color: var(--text-muted); }
   .section-head { margin-bottom: 32px; }
   .section-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
   .section-head p { font-size: 14px; color: var(--text-muted); }
@@ -207,7 +208,7 @@
 
 <section class="hero">
   <div class="wrap">
-    <h1>Access <em>12 open-weight</em><br>coding models in pi</h1>
+    <h1>Access <em>12 curated</em><br>coding models in pi</h1>
     <p>Use GLM-5.3, Kimi K3, DeepSeek V4.1 Flash, Muse Spark 1.3, Qwen3.8, and more through your ClinePass subscription — directly inside pi with full streaming, tool calls, and thinking level support.</p>
     <div class="install-block">
       <code>pi install npm:pi-clinepass-provider</code>
@@ -243,7 +244,7 @@
             <td><span class="tag tag-ctx">1M</span></td>
             <td class="cost">$1.40<span class="cost-label">/M tok</span></td>
             <td class="cost">$4.40<span class="cost-label">/M tok</span></td>
-            <td><span class="tag tag-think">low → max (always on)</span></td>
+            <td><span class="tag tag-think">low / high / xhigh → max</span></td>
           </tr>
           <tr>
             <td>
@@ -253,7 +254,7 @@
             <td><span class="tag tag-ctx">1M</span></td>
             <td class="cost">$0.15<span class="cost-label">/M tok</span></td>
             <td class="cost">$0.50<span class="cost-label">/M tok</span></td>
-            <td><span class="tag tag-think">low → max (always on)</span></td>
+            <td><span class="tag tag-think">low / high / xhigh → max</span></td>
           </tr>
           <tr>
             <td>
@@ -263,7 +264,7 @@
             <td><span class="tag tag-ctx">1M</span></td>
             <td class="cost">$3.00<span class="cost-label">/M tok</span></td>
             <td class="cost">$15.00<span class="cost-label">/M tok</span></td>
-            <td><span class="tag tag-think">max (always on)</span></td>
+            <td><span class="tag tag-think">high → max (always on)</span></td>
           </tr>
           <tr>
             <td>
@@ -291,8 +292,8 @@
               <span class="model-id">cline-pass/deepseek-v4.1-flash</span>
             </td>
             <td><span class="tag tag-ctx">1M</span></td>
-            <td class="cost">$0.14<span class="cost-label">/M tok</span></td>
-            <td class="cost">$0.28<span class="cost-label">/M tok</span></td>
+            <td class="cost">$0.30<span class="cost-label">/M tok</span></td>
+            <td class="cost">$1.20<span class="cost-label">/M tok</span></td>
             <td><span class="tag tag-think">off / high</span></td>
           </tr>
           <tr>
@@ -358,6 +359,10 @@
         </tbody>
       </table>
     </div>
+    <p>Prices are usage estimates, not bills or exact ClinePass quota measurements. The three new models use upstream reference rates, not confirmed ClinePass rates. DeepSeek V4.1 Flash uses peak rates; upstream off-peak rates are half.</p>
+    <p><strong>Muse Spark Contributor:</strong> Meta's Contributor tier permits training on prompts and completions. Check Cline's applicable terms before sending private code. Muse Spark is hosted, not open-weight.</p>
+    <p>All models are text-only in this extension. Reasoning labels use pi levels: GLM-5.3 and Flash support low/high/xhigh (xhigh sends max), with thinking always on.</p>
+    <p>This update removes the old IDs immediately ahead of Cline's announced September 21 cutoff. Migrate GLM-5.2 to GLM-5.3, Kimi K2.6/K2.7 Code to Kimi K3, and DeepSeek V4 Flash to V4.1 Flash. No aliases are provided.</p>
   </div>
 </section>
 
@@ -425,7 +430,7 @@
 <section class="cta">
   <div class="wrap">
     <h2>One command, 12 models.</h2>
-    <p>Install and start using open-weight models in pi today.</p>
+    <p>Install and start using ClinePass models in pi today.</p>
     <a href="https://github.com/jellydn/pi-clinepass-provider" class="btn">View on GitHub</a>
   </div>
 </section>

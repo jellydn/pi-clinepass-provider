@@ -116,3 +116,17 @@ _(append below — newest at bottom)_
 - **Type:** issue
 - **Detail:** Cline's docs still show the old catalog with V4 Flash pricing only. Third-party trackers diverge ($0.22/$0.66 Fireworks, $0.30/$1.20 Requesty, $0.15/$0.60 off-peak direct), so no authoritative ClinePass rate exists yet.
 - **Follow-up:** entry carries the deprecated V4 Flash rates as a placeholder with a code comment; remote model discovery overrides cost automatically once the API exposes V4.1 pricing. Revisit after 2026-09-21.
+
+### 2026-09-18 — PR #80 review: catalog and documentation gaps
+
+- **Context:** reviewing issue #79 and PR #80 against live Cline and upstream documentation
+- **Type:** issue
+- **Detail:** Cline's recommended-models endpoint confirms all 12 proposed IDs; `/api/v1/models` still exposes upstream IDs without ClinePass metadata. Meta's pricing page lists Contributor cached input at $0.002/M, not zero, and its model docs distinguish hosted Muse Spark from open-weight Muse Glimmer. README/site omit the Contributor training-data caveat and DeepSeek placeholder-price warning. README retains an obsolete catalog image and incorrectly groups GLM-5.2 with Kimi replacements. Remote discovery can reintroduce retired IDs; DeepSeek metadata and the new models' discovery maps need regression coverage.
+- **Follow-up:** fix the confirmed gaps without adding aliases or changing the discovery endpoint. Keep input text-only until ClinePass multimodal support is verified. Live completion checks need `CLINE_API_KEY`, which is not configured in this orb. Sources: https://dev.meta.ai/docs/models and https://dev.meta.ai/docs/pricing-rate-limits.
+
+### 2026-09-18 — fresh ClinePass pricing check during PR #80 review
+
+- **Context:** user requested a fresh read of https://docs.cline.bot/getting-started/clinepass
+- **Type:** finding
+- **Detail:** the page still lists the old catalog and omits all three additions, but now lists DeepSeek peak/off-peak rates. The inherited V4 Flash $0.14/$0.28/$0.0028 rates are stale. DeepSeek's official pricing page identifies Flash as V4.1 and lists peak $0.30/$1.20/$0.006, with off-peak at half those rates. The ClinePass page promises 2–5x usage, not rate limits. OpenRouter's public model API confirms Muse Contributor's 943,718 output limit; this was not found in Meta's own model page.
+- **Follow-up:** replace the inherited DeepSeek Flash estimate with upstream peak pricing and explicit ClinePass/peak caveats. Leave the pre-existing V4 Pro pricing drift outside this catalog refresh and flag it for follow-up. Preserve the minor changeset for the upstream catalog refresh, with an explicit saved-selection migration warning. No release or merge performed.

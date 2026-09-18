@@ -8,7 +8,7 @@ This document defines the ubiquitous language for the `pi-clinepass-provider` pr
 
 ### ClinePass
 
-A $9.99/month subscription service from Cline that provides access to curated open-weight coding models through an OpenAI-compatible API. ClinePass includes 2-5x standard API rate limits.
+A $9.99/month subscription service from Cline that provides access to curated coding models through an OpenAI-compatible API. ClinePass includes 2-5x the usage compared to standard API rates.
 
 - **Not** a model provider itself — it is a gateway to upstream model providers (GLM, Kimi, DeepSeek, etc.)
 - Models are identified by the `cline-pass/` prefix (e.g., `cline-pass/deepseek-v4.1-flash`)
@@ -58,7 +58,7 @@ A hardcoded list of 12 curated models (GLM-5.3, GLM-5.3-Flash, Kimi K3, Muse Spa
 
 ### Dynamic Model Discovery
 
-A runtime fetch from Cline's `/api/v1/models` endpoint (OpenAI-compatible format) that returns the live model list. Models not prefixed with `cline-pass/` are filtered out. Falls back to the static catalog on any error (network failure, 404, parse error, empty list).
+A runtime fetch from Cline's `/api/v1/models` endpoint (OpenAI-compatible format) that returns the live model list. Models not prefixed with `cline-pass/` and retired catalog IDs are filtered out. Falls back to the static catalog on any error or when no usable models remain.
 
 ### Model Compatibility Override
 

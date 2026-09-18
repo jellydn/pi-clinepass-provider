@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
-> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 12 curated open-weight coding models (GLM-5.3, Kimi K3, DeepSeek V4.1 Flash, Muse Spark 1.3 Contributor, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
+> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 12 curated coding models (GLM-5.3, Kimi K3, DeepSeek V4.1 Flash, Muse Spark 1.3 Contributor, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x the usage compared to standard API rates.
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
@@ -51,24 +51,28 @@ pnpm add pi-clinepass-provider
 
 ## Supported Models
 
-![Models](models.png)
+| Model                      | Model ID                                | Context | Reasoning                                         |
+| :------------------------- | :-------------------------------------- | :------ | :------------------------------------------------ |
+| GLM-5.3                    | `cline-pass/glm-5.3`                    | 1M      | low / high / xhigh (xhigh → max; always on)       |
+| GLM-5.3-Flash              | `cline-pass/glm-5.3-flash`              | 1M      | low / high / xhigh (xhigh → max; always on)       |
+| Kimi K3                    | `cline-pass/kimi-k3`                    | 1M      | high (max; always on)                             |
+| Muse Spark 1.3 Contributor | `cline-pass/muse-spark-1.3-contributor` | 1M      | minimal / low / medium / high / xhigh (always on) |
+| DeepSeek V4 Pro            | `cline-pass/deepseek-v4-pro`            | 1M      | off + high (high used for xhigh)                  |
+| DeepSeek V4.1 Flash        | `cline-pass/deepseek-v4.1-flash`        | 1M      | off + high (high used for xhigh)                  |
+| MiMo-V2.5                  | `cline-pass/mimo-v2.5`                  | 262K    | off / low / medium / high                         |
+| MiMo-V2.5-Pro              | `cline-pass/mimo-v2.5-pro`              | 262K    | off / low / medium / high                         |
+| MiniMax M3                 | `cline-pass/minimax-m3`                 | 1M      | off / low / medium / high                         |
+| Qwen3.7 Max                | `cline-pass/qwen3.7-max`                | 262K    | off / low / medium / high                         |
+| Qwen3.7 Plus               | `cline-pass/qwen3.7-plus`               | 1M      | off / low / medium / high                         |
+| Qwen3.8 Max                | `cline-pass/qwen3.8-max`                | 1M      | low / medium / xhigh                              |
 
-| Model                        | Model ID                             | Context | Reasoning                                   |
-| :--------------------------- | :----------------------------------- | :------ | :------------------------------------------ |
-| GLM-5.3                      | `cline-pass/glm-5.3`                 | 1M      | low / high / xhigh (xhigh → max; always on) |
-| GLM-5.3-Flash                | `cline-pass/glm-5.3-flash`           | 1M      | low / high / xhigh (xhigh → max; always on) |
-| Kimi K3                      | `cline-pass/kimi-k3`                 | 1M      | high (max; always on)                       |
-| Muse Spark 1.3 Contributor   | `cline-pass/muse-spark-1.3-contributor` | 1M   | minimal / low / medium / high / xhigh (always on) |
-| DeepSeek V4 Pro              | `cline-pass/deepseek-v4-pro`         | 1M      | off + high (high used for xhigh)            |
-| DeepSeek V4.1 Flash          | `cline-pass/deepseek-v4.1-flash`     | 1M      | off + high (high used for xhigh)            |
-| MiMo-V2.5                    | `cline-pass/mimo-v2.5`               | 262K    | off / low / medium / high                   |
-| MiMo-V2.5-Pro                | `cline-pass/mimo-v2.5-pro`           | 262K    | off / low / medium / high                   |
-| MiniMax M3                   | `cline-pass/minimax-m3`              | 1M      | off / low / medium / high                   |
-| Qwen3.7 Max                  | `cline-pass/qwen3.7-max`             | 262K    | off / low / medium / high                   |
-| Qwen3.7 Plus                 | `cline-pass/qwen3.7-plus`            | 1M      | off / low / medium / high                   |
-| Qwen3.8 Max                  | `cline-pass/qwen3.8-max`             | 1M      | low / medium / xhigh                        |
+> **Migration:** This update removes four IDs immediately, in preparation for Cline's announced September 21, 2026 cutoff (12:00 AM PST, as quoted in [#79](https://github.com/jellydn/pi-clinepass-provider/issues/79)). Update saved model selections and scripts: `cline-pass/glm-5.2` → `cline-pass/glm-5.3`; `cline-pass/kimi-k2.7-code` and `cline-pass/kimi-k2.6` → `cline-pass/kimi-k3`; `cline-pass/deepseek-v4-flash` → `cline-pass/deepseek-v4.1-flash`. There are no aliases. Retired IDs are also excluded from dynamic discovery.
 
-> **Deprecated 2026-09-21** (removed from the catalog per Cline's announcement): `cline-pass/glm-5.2`, `cline-pass/kimi-k2.7-code` and `cline-pass/kimi-k2.6` (→ Kimi K3), `cline-pass/deepseek-v4-flash` (→ DeepSeek V4.1 Flash).
+> **Contributor data policy:** Muse Spark is a hosted model, not open-weight. Meta's [Contributor tier](https://dev.meta.ai/docs/pricing-rate-limits) permits training on prompts and completions. Check Cline's applicable terms before sending private code or sensitive data; do not assume this tier has the Standard tier's no-training policy.
+
+> **Reference prices are estimates, not bills or exact quota measurements.** ClinePass is a flat subscription. The three new models use upstream reference rates because the [ClinePass page](https://docs.cline.bot/getting-started/clinepass) does not yet list their rates. DeepSeek V4.1 Flash uses upstream peak rates ($0.30 input / $1.20 output / $0.006 cached input per million tokens); upstream off-peak rates are half. Muse uses $0.10 / $0.20 / $0.002 and GLM-5.3-Flash uses $0.15 / $0.50 / $0.03. Discovery overrides prices only when `/api/v1/models` returns the exact `cline-pass/` ID with pricing metadata; the public endpoint currently returns upstream IDs without that metadata.
+
+All models are exposed as text-only by this extension. Upstream multimodal support does not establish image support through ClinePass.
 
 > **Thinking levels**: pi supports 6 levels — `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. Each model declares which levels it supports, mapped to the provider's `reasoning_effort` parameter. Set the thinking level with pi's `--thinking` flag or `/thinking` command. A level marked as unsupported (not listed above) maps to `null` — no `reasoning_effort` is sent to the API, so the model runs with its default reasoning behavior.
 
