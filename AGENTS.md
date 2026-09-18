@@ -4,7 +4,7 @@
 
 pi extension that registers `"clinepass"` as a model provider via pi's `openai-completions` streaming. Entry point: `src/index.ts` (default export receiving `ExtensionAPI`).
 
-Models are referenced as `clinepass/cline-pass/<slug>` (e.g. `clinepass/cline-pass/deepseek-v4-flash`). When invoking pi directly: `--model clinepass/cline-pass/...`.
+Models are referenced as `clinepass/cline-pass/<slug>` (e.g. `clinepass/cline-pass/deepseek-v4.1-flash`). When invoking pi directly: `--model clinepass/cline-pass/...`.
 
 ## Implementation notes (all AI tools)
 

@@ -63,15 +63,15 @@ export const CLINEPASS_OPENAI_COMPAT: ClinePassOpenAICompat = {
 };
 
 /**
- * ClinePass curated open-weight coding models.
+ * ClinePass curated coding models.
  *
- * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.2") as
+ * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.3") as
  * documented at https://docs.cline.bot/getting-started/clinepass — these are
  * the values Cline's API expects in the `model` field.
  *
  * `contextWindow` is in tokens; `maxTokens` is the max output tokens.
- * Reference pricing ($/M tokens) is from the ClinePass docs and is used for
- * usage tracking — ClinePass itself is a flat $9.99/mo subscription.
+ * Reference pricing ($/M tokens) is used for usage estimates, not billing.
+ * Sources and provisional rates are noted per model where needed.
  */
 export interface ModelConfig {
   id: string;
@@ -123,54 +123,26 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
-    id: "cline-pass/glm-5.2",
-    name: "GLM-5.2 (ClinePass)",
+    id: "cline-pass/glm-5.3-flash",
+    name: "GLM-5.3-Flash (ClinePass)",
     reasoning: true,
     input: ["text"],
-    cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
-    contextWindow: 200_000,
+    // Z.ai standard API pricing (per 1M tokens): $0.15 in / $0.50 out /
+    // $0.03 cached input.
+    cost: { input: 0.15, output: 0.5, cacheRead: 0.03, cacheWrite: 0 },
+    contextWindow: 1_048_576,
     maxTokens: 131_072,
-    thinkingLevelMap: {
-      off: "none",
-      minimal: null,
-      low: "low",
-      medium: "medium",
-      high: "high",
-      xhigh: "xhigh",
-    },
-  },
-  {
-    id: "cline-pass/kimi-k2.7-code",
-    name: "Kimi K2.7 Code (ClinePass)",
-    reasoning: true,
-    input: ["text"],
-    cost: { input: 0.95, output: 4.0, cacheRead: 0.19, cacheWrite: 0 },
-    contextWindow: 262_144,
-    maxTokens: 131_072,
+    // Z.ai docs: text parameters are consistent with GLM-5.3 and thinking
+    // cannot be disabled (thinking.type only supports enabled), so the
+    // reasoning_effort enum is low/high/max with off/minimal/medium
+    // unsupported — same map as GLM-5.3.
     thinkingLevelMap: {
       off: null,
       minimal: null,
       low: "low",
-      medium: "medium",
+      medium: null,
       high: "high",
-      xhigh: null,
-    },
-  },
-  {
-    id: "cline-pass/kimi-k2.6",
-    name: "Kimi K2.6 (ClinePass)",
-    reasoning: true,
-    input: ["text"],
-    cost: { input: 0.95, output: 4.0, cacheRead: 0.16, cacheWrite: 0 },
-    contextWindow: 262_144,
-    maxTokens: 131_072,
-    thinkingLevelMap: {
-      off: null,
-      minimal: null,
-      low: "low",
-      medium: "medium",
-      high: "high",
-      xhigh: null,
+      xhigh: "max",
     },
   },
   {
@@ -192,6 +164,31 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
+    id: "cline-pass/muse-spark-1.3-contributor",
+    name: "Muse Spark 1.3 Contributor (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    // https://dev.meta.ai/docs/pricing-rate-limits (Contributor tier).
+    // This tier permits Meta to train on prompts/completions.
+    cost: { input: 0.1, output: 0.2, cacheRead: 0.002, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    // Max output from https://openrouter.ai/api/v1/models (Contributor ID).
+    maxTokens: 943_718,
+    // Muse Spark always reasons: reasoning_effort="none" returns HTTP 400,
+    // so "off" is unsupported. Meta's effort enum is minimal/low/medium/
+    // high/xhigh — pi's levels map 1:1. "max" exists upstream but is
+    // standard-tier only, not available on Contributor models, so pi's
+    // "xhigh" maps to "xhigh" rather than "max".
+    thinkingLevelMap: {
+      off: null,
+      minimal: "minimal",
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+    },
+  },
+  {
     id: "cline-pass/deepseek-v4-pro",
     name: "DeepSeek V4 Pro (ClinePass)",
     reasoning: true,
@@ -209,13 +206,19 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
-    id: "cline-pass/deepseek-v4-flash",
-    name: "DeepSeek V4 Flash (ClinePass)",
+    id: "cline-pass/deepseek-v4.1-flash",
+    name: "DeepSeek V4.1 Flash (ClinePass)",
     reasoning: true,
     input: ["text"],
-    cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
+    // Upstream peak rates: https://api-docs.deepseek.com/quick_start/pricing
+    // Off-peak rates are half. ClinePass V4.1 rates remain unconfirmed.
+    // Discovery overrides these only for the exact cline-pass/ ID with pricing.
+    cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
+    // Same hybrid reasoning behaviour as the other DeepSeek entries:
+    // thinking can be disabled via effort "none", and pi's xhigh clamps
+    // to the only supported tier, "high".
     thinkingLevelMap: {
       off: "none",
       minimal: null,
@@ -358,6 +361,14 @@ export const MODELS_ENDPOINT = "/api/v1/models";
 /** Timeout for the model-list fetch (ms). Keeps registration responsive. */
 export const MODELS_FETCH_TIMEOUT_MS = 5_000;
 
+// Issue #79: do not restore the retired catalog through a stale API list.
+const RETIRED_MODEL_IDS = new Set([
+  "cline-pass/glm-5.2",
+  "cline-pass/kimi-k2.7-code",
+  "cline-pass/kimi-k2.6",
+  "cline-pass/deepseek-v4-flash",
+]);
+
 /**
  * Raw model entry from the Cline API `/models` endpoint.
  * Follows the OpenAI-compatible format, with optional Cline extensions.
@@ -437,7 +448,7 @@ export interface RemoteModelsOptions {
  *
  * The endpoint follows the OpenAI-compatible format: `{ data: [{ id, ... }] }`
  * or a bare array `[{ id, ... }]`. Only models with `cline-pass/` prefixed IDs
- * are included.
+ * are included, excluding retired catalog IDs.
  */
 export async function fetchRemoteModels(
   options: RemoteModelsOptions = {},
@@ -474,7 +485,7 @@ export async function fetchRemoteModels(
 
     const parsed = rawList.reduce<ModelConfig[]>((acc, raw) => {
       const id = stringValue(raw?.id);
-      if (!id?.startsWith("cline-pass/")) return acc;
+      if (!id?.startsWith("cline-pass/") || RETIRED_MODEL_IDS.has(id)) return acc;
       const model = parseRemoteModel(raw, staticById.get(id));
       if (model) acc.push(model);
       return acc;
@@ -493,9 +504,7 @@ export async function fetchRemoteModels(
  *
  * Tries the remote API first (if an API key is available), falling back to
  * the static `MODELS` array on any error. This keeps the extension functional
- * even when the Cline API doesn't expose a `/models` endpoint yet (currently
- * returns 404), and automatically benefits from dynamic discovery when the
- * endpoint becomes available.
+ * when the endpoint fails or returns no usable ClinePass entries.
  *
  * @param apiKey The API key to use for the fetch (optional)
  * @param options I/O options for testability

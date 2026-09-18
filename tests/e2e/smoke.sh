@@ -77,7 +77,7 @@ status=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST "$API_BASE/api/v1/chat/completions" \
   -H "Authorization: Bearer $CLINE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model":"cline-pass/deepseek-v4-flash","messages":[{"role":"user","content":"hi"}],"max_tokens":1}' 2>&1) || true
+  -d '{"model":"cline-pass/deepseek-v4.1-flash","messages":[{"role":"user","content":"hi"}],"max_tokens":1}' 2>&1) || true
 
 if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
   echo -e "${GREEN}PASS${NC}"
@@ -95,13 +95,13 @@ echo ""
 echo -e "${YELLOW}2. Model Smoke Tests${NC}"
 
 # Test with the cheapest/fastest model first
-run_test "DeepSeek V4 Flash (simple math)" \
-  "cline-pass/deepseek-v4-flash" \
+run_test "DeepSeek V4.1 Flash (simple math)" \
+  "cline-pass/deepseek-v4.1-flash" \
   "What is 2+3? Answer with just the number." \
   "5"
 
-run_test "DeepSeek V4 Flash (knowledge)" \
-  "cline-pass/deepseek-v4-flash" \
+run_test "DeepSeek V4.1 Flash (knowledge)" \
+  "cline-pass/deepseek-v4.1-flash" \
   "What is the capital of Japan? One word." \
   "tokyo"
 
@@ -110,10 +110,15 @@ run_test "MiMo V2.5 (simple math)" \
   "What is 6+2? Answer with just the number." \
   "8"
 
-run_test "Kimi K2.6 (simple math)" \
-  "cline-pass/kimi-k2.6" \
+run_test "GLM-5.3-Flash (simple math)" \
+  "cline-pass/glm-5.3-flash" \
   "What is 4+5? Answer with just the number." \
   "9"
+
+run_test "Muse Spark 1.3 Contributor (simple math)" \
+  "cline-pass/muse-spark-1.3-contributor" \
+  "What is 7+6? Answer with just the number." \
+  "13"
 
 echo ""
 
@@ -125,7 +130,7 @@ echo -n "  Invalid API key ... "
 output=$(CLINE_API_KEY="invalid_key_12345" \
   timeout "$TIMEOUT" pi --no-extensions \
   -e "$PROVIDER_PATH" \
-  --model "clinepass/cline-pass/deepseek-v4-flash" \
+  --model "clinepass/cline-pass/deepseek-v4.1-flash" \
   --no-tools \
   -p "test" 2>&1) || true
 
