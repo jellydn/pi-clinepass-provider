@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jellydn/pi-clinepass-provider/workflows/CI/badge.svg)](https://github.com/jellydn/pi-clinepass-provider/actions)
 
-> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 13 curated open-weight coding models (GLM-5.3, GLM-5.2, Kimi K2.7 Code, Kimi K3, DeepSeek V4, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
+> ClinePass provider for [pi](https://github.com/earendil-works/pi) — 12 curated open-weight coding models (GLM-5.3, Kimi K3, DeepSeek V4.1 Flash, Muse Spark 1.3 Contributor, Qwen3.8 Max, and more) through Cline's $9.99/month subscription with 2-5x standard API rate limits.
 
 ClinePass uses Cline's **OpenAI-compatible Chat Completions API**, so no custom streaming protocol is needed — pi's built-in `openai-completions` streaming handles SSE parsing, tool calls, and usage tracking.
 
@@ -53,21 +53,22 @@ pnpm add pi-clinepass-provider
 
 ![Models](models.png)
 
-| Model             | Model ID                       | Context | Reasoning                         |
-| :---------------- | :----------------------------- | :------ | :-------------------------------- |
-| GLM-5.3           | `cline-pass/glm-5.3`           | 1M      | low / high / xhigh (xhigh → max; always on) |
-| GLM-5.2           | `cline-pass/glm-5.2`           | 200K    | off / low / medium / high / xhigh |
-| Kimi K2.7 Code    | `cline-pass/kimi-k2.7-code`    | 262K    | low / medium / high               |
-| Kimi K2.6         | `cline-pass/kimi-k2.6`         | 262K    | low / medium / high               |
-| Kimi K3           | `cline-pass/kimi-k3`           | 1M      | high (max; always on)             |
-| DeepSeek V4 Pro   | `cline-pass/deepseek-v4-pro`   | 1M      | off + high (high used for xhigh)  |
-| DeepSeek V4 Flash | `cline-pass/deepseek-v4-flash` | 1M      | off + high (high used for xhigh)  |
-| MiMo-V2.5         | `cline-pass/mimo-v2.5`         | 262K    | off / low / medium / high         |
-| MiMo-V2.5-Pro     | `cline-pass/mimo-v2.5-pro`     | 262K    | off / low / medium / high         |
-| MiniMax M3        | `cline-pass/minimax-m3`        | 1M      | off / low / medium / high         |
-| Qwen3.7 Max       | `cline-pass/qwen3.7-max`       | 262K    | off / low / medium / high         |
-| Qwen3.7 Plus      | `cline-pass/qwen3.7-plus`      | 1M      | off / low / medium / high         |
-| Qwen3.8 Max       | `cline-pass/qwen3.8-max`       | 1M      | low / medium / xhigh              |
+| Model                        | Model ID                             | Context | Reasoning                                   |
+| :--------------------------- | :----------------------------------- | :------ | :------------------------------------------ |
+| GLM-5.3                      | `cline-pass/glm-5.3`                 | 1M      | low / high / xhigh (xhigh → max; always on) |
+| GLM-5.3-Flash                | `cline-pass/glm-5.3-flash`           | 1M      | low / high / xhigh (xhigh → max; always on) |
+| Kimi K3                      | `cline-pass/kimi-k3`                 | 1M      | high (max; always on)                       |
+| Muse Spark 1.3 Contributor   | `cline-pass/muse-spark-1.3-contributor` | 1M   | minimal / low / medium / high / xhigh (always on) |
+| DeepSeek V4 Pro              | `cline-pass/deepseek-v4-pro`         | 1M      | off + high (high used for xhigh)            |
+| DeepSeek V4.1 Flash          | `cline-pass/deepseek-v4.1-flash`     | 1M      | off + high (high used for xhigh)            |
+| MiMo-V2.5                    | `cline-pass/mimo-v2.5`               | 262K    | off / low / medium / high                   |
+| MiMo-V2.5-Pro                | `cline-pass/mimo-v2.5-pro`           | 262K    | off / low / medium / high                   |
+| MiniMax M3                   | `cline-pass/minimax-m3`              | 1M      | off / low / medium / high                   |
+| Qwen3.7 Max                  | `cline-pass/qwen3.7-max`             | 262K    | off / low / medium / high                   |
+| Qwen3.7 Plus                 | `cline-pass/qwen3.7-plus`            | 1M      | off / low / medium / high                   |
+| Qwen3.8 Max                  | `cline-pass/qwen3.8-max`             | 1M      | low / medium / xhigh                        |
+
+> **Deprecated 2026-09-21** (removed from the catalog per Cline's announcement): `cline-pass/glm-5.2`, `cline-pass/kimi-k2.7-code` and `cline-pass/kimi-k2.6` (→ Kimi K3), `cline-pass/deepseek-v4-flash` (→ DeepSeek V4.1 Flash).
 
 > **Thinking levels**: pi supports 6 levels — `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. Each model declares which levels it supports, mapped to the provider's `reasoning_effort` parameter. Set the thinking level with pi's `--thinking` flag or `/thinking` command. A level marked as unsupported (not listed above) maps to `null` — no `reasoning_effort` is sent to the API, so the model runs with its default reasoning behavior.
 
@@ -115,20 +116,20 @@ If the refresh token expires or is revoked (e.g., you re-login with `cline auth`
 
 ```sh
 # Non-interactive
-pi --model clinepass/cline-pass/deepseek-v4-flash -p "Explain async/await in JavaScript"
+pi --model clinepass/cline-pass/deepseek-v4.1-flash -p "Explain async/await in JavaScript"
 
 # Interactive
-pi --model clinepass/cline-pass/kimi-k2.7-code
+pi --model clinepass/cline-pass/glm-5.3-flash
 
 # List available models
 pi --list-models clinepass
 
 # Use in another project
 cd my-project
-pi --model clinepass/cline-pass/glm-5.2 --trust "Refactor the auth module"
+pi --model clinepass/cline-pass/glm-5.3 --trust "Refactor the auth module"
 ```
 
-Switch models in-session with `/model clinepass/cline-pass/glm-5.2`.
+Switch models in-session with `/model clinepass/cline-pass/glm-5.3`.
 
 ### Thinking levels
 
@@ -138,14 +139,17 @@ Set the reasoning effort per model using pi's `--thinking` flag or the in-sessio
 # Use high reasoning with DeepSeek V4 Pro
 pi --model clinepass/cline-pass/deepseek-v4-pro --thinking high -p "Design a scalable microservice architecture"
 
-# GLM-5.2 supports five levels up to xhigh
-pi --model clinepass/cline-pass/glm-5.2 --thinking xhigh -p "Solve this complex math proof"
-
 # GLM-5.3 always reasons; pick low/high/max effort (xhigh → max)
-pi --model clinepass/cline-pass/glm-5.3 --thinking xhigh -p "Refactor this monolith into services"
+pi --model clinepass/cline-pass/glm-5.3 --thinking xhigh -p "Solve this complex math proof"
+
+# GLM-5.3-Flash: same always-on reasoning as GLM-5.3, much cheaper
+pi --model clinepass/cline-pass/glm-5.3-flash --thinking xhigh -p "Refactor this monolith into services"
+
+# Muse Spark 1.3 Contributor supports minimal through xhigh (always on)
+pi --model clinepass/cline-pass/muse-spark-1.3-contributor --thinking medium -p "Write a React form component"
 
 # Disable reasoning for a quick code gen task
-pi --model clinepass/cline-pass/deepseek-v4-flash --thinking off -p "Write a React form component"
+pi --model clinepass/cline-pass/deepseek-v4.1-flash --thinking off -p "Write a React form component"
 ```
 
 Each model's supported thinking levels are listed in the [Supported Models](#supported-models) table above. Unsupported levels are not sent to the API — the model runs with its default reasoning behavior.

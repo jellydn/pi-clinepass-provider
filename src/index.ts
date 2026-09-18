@@ -2,8 +2,8 @@
  * ClinePass Provider for pi
  *
  * Adds Cline's ClinePass subscription as a pi provider, giving access to
- * curated open-weight coding models (GLM-5.2, Kimi K2.7, DeepSeek V4, and
- * more) through Cline's OpenAI-compatible API.
+ * curated open-weight coding models (GLM-5.3, Kimi K3, DeepSeek V4.1 Flash,
+ * and more) through Cline's OpenAI-compatible API.
  *
  * ClinePass is a $9.99/month subscription with 2-5x API rate limits.
  * See https://docs.cline.bot/getting-started/clinepass

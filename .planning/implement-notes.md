@@ -95,3 +95,24 @@ _(append below — newest at bottom)_
 - **Type:** issue
 - **Detail:** the landing page implied an unsupported `high` reasoning level, architecture docs retained a stale line count, and the model-specific test did not pin catalog metadata.
 - **Follow-up:** listed the supported levels explicitly, removed the volatile line count, and added exact pricing and token-limit assertions.
+
+### 2026-09-18 — Sep 2026 catalog refresh verified against recommended-models endpoint
+
+- **Context:** implementing issue #79 (add MuseSpark 1.3 Contributor + DeepSeek v4.1-flash, remove deprecated models) before the 2026-09-21 cutoff
+- **Type:** finding
+- **Detail:** `/api/v1/models` returns no `cline-pass/` entries (445 upstream models only), but `/api/v1/ai/cline/recommended-models` exposes a `clinePass` array with exact slugs — including `cline-pass/muse-spark-1.3-contributor`, `cline-pass/deepseek-v4.1-flash`, and `cline-pass/glm-5.3-flash`. The deprecated IDs were still listed pre-cutoff. Cline's docs page had not yet been updated.
+- **Follow-up:** slugs verified before merging, per the issue's acceptance criteria. GLM-5.3-Flash was out of the issue's scope but added on request; worth confirming it stays in the catalog after the cutoff.
+
+### 2026-09-18 — Muse Spark contributor tier excludes upstream max effort
+
+- **Context:** deriving the `thinkingLevelMap` for `cline-pass/muse-spark-1.3-contributor` from Meta Model API docs
+- **Type:** learning
+- **Detail:** Muse Spark always reasons (`reasoning_effort: "none"` → HTTP 400, so `off: null`), and Meta's enum is minimal/low/medium/high/xhigh — but `"max"` is standard-tier `muse-spark-1.3` only and explicitly unavailable on Contributor models. pi's `xhigh` therefore maps to `"xhigh"`, not `"max"`, unlike GLM-5.3/Kimi K3.
+- **Follow-up:** pinned by the unit test "Muse Spark 1.3 Contributor maps pi levels 1:1".
+
+### 2026-09-18 — DeepSeek V4.1 Flash reference pricing not yet published
+
+- **Context:** populating cost metadata for the new DeepSeek entry
+- **Type:** issue
+- **Detail:** Cline's docs still show the old catalog with V4 Flash pricing only. Third-party trackers diverge ($0.22/$0.66 Fireworks, $0.30/$1.20 Requesty, $0.15/$0.60 off-peak direct), so no authoritative ClinePass rate exists yet.
+- **Follow-up:** entry carries the deprecated V4 Flash rates as a placeholder with a code comment; remote model discovery overrides cost automatically once the API exposes V4.1 pricing. Revisit after 2026-09-21.

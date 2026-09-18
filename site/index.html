@@ -208,7 +208,7 @@
 <section class="hero">
   <div class="wrap">
     <h1>Access <em>12 open-weight</em><br>coding models in pi</h1>
-    <p>Use GLM-5.2, Kimi K2.7, DeepSeek V4, Qwen3.7, and more through your ClinePass subscription — directly inside pi with full streaming, tool calls, and thinking level support.</p>
+    <p>Use GLM-5.3, Kimi K3, DeepSeek V4.1 Flash, Muse Spark 1.3, Qwen3.8, and more through your ClinePass subscription — directly inside pi with full streaming, tool calls, and thinking level support.</p>
     <div class="install-block">
       <code>pi install npm:pi-clinepass-provider</code>
       <button class="copy-btn" onclick="copyInstall(this)">Copy</button>
@@ -237,33 +237,23 @@
         <tbody>
           <tr>
             <td>
-              <span class="model-name">GLM-5.2</span>
-              <span class="model-id">cline-pass/glm-5.2</span>
+              <span class="model-name">GLM-5.3</span>
+              <span class="model-id">cline-pass/glm-5.3</span>
             </td>
-            <td><span class="tag tag-ctx">200K</span></td>
+            <td><span class="tag tag-ctx">1M</span></td>
             <td class="cost">$1.40<span class="cost-label">/M tok</span></td>
             <td class="cost">$4.40<span class="cost-label">/M tok</span></td>
-            <td><span class="tag tag-think">off → xhigh</span></td>
+            <td><span class="tag tag-think">low → max (always on)</span></td>
           </tr>
           <tr>
             <td>
-              <span class="model-name">Kimi K2.7 Code</span>
-              <span class="model-id">cline-pass/kimi-k2.7-code</span>
+              <span class="model-name">GLM-5.3-Flash</span>
+              <span class="model-id">cline-pass/glm-5.3-flash</span>
             </td>
-            <td><span class="tag tag-ctx">262K</span></td>
-            <td class="cost">$0.95<span class="cost-label">/M tok</span></td>
-            <td class="cost">$4.00<span class="cost-label">/M tok</span></td>
-            <td><span class="tag tag-think">low → high</span></td>
-          </tr>
-          <tr>
-            <td>
-              <span class="model-name">Kimi K2.6</span>
-              <span class="model-id">cline-pass/kimi-k2.6</span>
-            </td>
-            <td><span class="tag tag-ctx">262K</span></td>
-            <td class="cost">$0.95<span class="cost-label">/M tok</span></td>
-            <td class="cost">$4.00<span class="cost-label">/M tok</span></td>
-            <td><span class="tag tag-think">low → high</span></td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$0.15<span class="cost-label">/M tok</span></td>
+            <td class="cost">$0.50<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">low → max (always on)</span></td>
           </tr>
           <tr>
             <td>
@@ -277,6 +267,16 @@
           </tr>
           <tr>
             <td>
+              <span class="model-name">Muse Spark 1.3 Contributor</span>
+              <span class="model-id">cline-pass/muse-spark-1.3-contributor</span>
+            </td>
+            <td><span class="tag tag-ctx">1M</span></td>
+            <td class="cost">$0.10<span class="cost-label">/M tok</span></td>
+            <td class="cost">$0.20<span class="cost-label">/M tok</span></td>
+            <td><span class="tag tag-think">minimal → xhigh (always on)</span></td>
+          </tr>
+          <tr>
+            <td>
               <span class="model-name">DeepSeek V4 Pro</span>
               <span class="model-id">cline-pass/deepseek-v4-pro</span>
             </td>
@@ -287,8 +287,8 @@
           </tr>
           <tr>
             <td>
-              <span class="model-name">DeepSeek V4 Flash</span>
-              <span class="model-id">cline-pass/deepseek-v4-flash</span>
+              <span class="model-name">DeepSeek V4.1 Flash</span>
+              <span class="model-id">cline-pass/deepseek-v4.1-flash</span>
             </td>
             <td><span class="tag tag-ctx">1M</span></td>
             <td class="cost">$0.14<span class="cost-label">/M tok</span></td>

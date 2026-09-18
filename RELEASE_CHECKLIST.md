@@ -44,7 +44,7 @@ npm run test:e2e
 If the automated smoke test passes, additionally verify:
 
 - [ ] **Model discovery** — `pi --list-models clinepass` shows the expected models (dynamic discovery may add/remove models)
-- [ ] **Chat completions** — `pi --model clinepass/cline-pass/deepseek-v4-flash -p "Hello"` returns a coherent response
+- [ ] **Chat completions** — `pi --model clinepass/cline-pass/deepseek-v4.1-flash -p "Hello"` returns a coherent response
 - [ ] **Login flow (WorkOS OAuth)** — if you have `cline auth` credentials, `pi /login` → ClinePass detects them automatically
 - [ ] **Login flow (static API key)** — `pi /login` → ClinePass → paste key works without errors
 - [ ] **Error handling** — using an invalid API key produces a clear error message (not a stack trace)
@@ -108,7 +108,7 @@ npm view pi-clinepass-provider version
 
 - [ ] `pi install npm:pi-clinepass-provider` installs the new version
 - [ ] `pi --list-models clinepass` shows the expected models
-- [ ] Quick chat test: `pi --model clinepass/cline-pass/deepseek-v4-flash -p "Hello"` works
+- [ ] Quick chat test: `pi --model clinepass/cline-pass/deepseek-v4.1-flash -p "Hello"` works
 - [ ] GitHub release page shows the correct changelog
 
 ## Emergency Rollback

@@ -1,7 +1,7 @@
 {
   "name": "pi-clinepass-provider",
   "version": "1.4.0",
-  "description": "ClinePass provider for pi — access GLM-5.2, Kimi K2.7, DeepSeek V4 and more open-weight coding models through Cline's $9.99/mo subscription",
+  "description": "ClinePass provider for pi — access GLM-5.3, Kimi K3, DeepSeek V4.1 Flash and more open-weight coding models through Cline's $9.99/mo subscription",
   "keywords": [
     "ai",
     "cline",

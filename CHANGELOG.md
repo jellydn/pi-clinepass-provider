@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **GLM-5.3 model** — registered `cline-pass/glm-5.3` (Z.ai) in the static catalog with 1M context / 128K output. GLM-5.3 always reasons and cannot be disabled; its `reasoning_effort` enum is `low`/`high`/`max` (default `max`) with no `medium` or `xhigh` tier, so pi's `off`/`minimal`/`medium` map to `null` and `xhigh` maps to `max` (every offered level distinct and increasing). Pricing mirrors GLM-5.2 per the ClinePass docs ($1.40/$4.40/$0.26).
+- **GLM-5.3-Flash model** — registered `cline-pass/glm-5.3-flash` (Z.ai's first natively multimodal GLM-5 model) with 1M context / 128K output. Text parameters are consistent with GLM-5.3 (low/high/max, thinking always on); pricing is Z.ai's published $0.15/$0.50/$0.03.
+- **Muse Spark 1.3 Contributor model** — registered `cline-pass/muse-spark-1.3-contributor` (Meta) with 1M context / ~944K output and contributor-tier pricing ($0.10/$0.20, requires opting in to Meta training on prompts/completions). Muse Spark always reasons (`reasoning_effort: "none"` returns HTTP 400), so pi's `off` maps to `null`; Meta's minimal/low/medium/high/xhigh enum maps 1:1 from pi's levels. The upstream `max` tier is standard-tier only, so pi's `xhigh` maps to `xhigh`.
+- **DeepSeek V4.1 Flash model** — registered `cline-pass/deepseek-v4.1-flash` (1M context / 384K output) replacing the deprecated `cline-pass/deepseek-v4-flash`. Carries the V4 Flash reference pricing until ClinePass publishes V4.1 rates; remote model discovery overrides once pricing is exposed.
+
+### Removed
+
+- **Deprecated models (effective 2026-09-21 per Cline's announcement, [#79](https://github.com/jellydn/pi-clinepass-provider/issues/79))** — removed `cline-pass/glm-5.2`, `cline-pass/kimi-k2.7-code`, `cline-pass/kimi-k2.6` (→ Kimi K3), and `cline-pass/deepseek-v4-flash` (→ DeepSeek V4.1 Flash) from the static catalog. No aliases were kept — ClinePass will reject the old IDs after the cutoff.
 
 ### Docs
 

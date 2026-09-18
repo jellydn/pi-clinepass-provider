@@ -65,7 +65,7 @@ export const CLINEPASS_OPENAI_COMPAT: ClinePassOpenAICompat = {
 /**
  * ClinePass curated open-weight coding models.
  *
- * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.2") as
+ * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.3") as
  * documented at https://docs.cline.bot/getting-started/clinepass — these are
  * the values Cline's API expects in the `model` field.
  *
@@ -123,54 +123,26 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
-    id: "cline-pass/glm-5.2",
-    name: "GLM-5.2 (ClinePass)",
+    id: "cline-pass/glm-5.3-flash",
+    name: "GLM-5.3-Flash (ClinePass)",
     reasoning: true,
     input: ["text"],
-    cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
-    contextWindow: 200_000,
+    // Z.ai standard API pricing (per 1M tokens): $0.15 in / $0.50 out /
+    // $0.03 cached input.
+    cost: { input: 0.15, output: 0.5, cacheRead: 0.03, cacheWrite: 0 },
+    contextWindow: 1_048_576,
     maxTokens: 131_072,
-    thinkingLevelMap: {
-      off: "none",
-      minimal: null,
-      low: "low",
-      medium: "medium",
-      high: "high",
-      xhigh: "xhigh",
-    },
-  },
-  {
-    id: "cline-pass/kimi-k2.7-code",
-    name: "Kimi K2.7 Code (ClinePass)",
-    reasoning: true,
-    input: ["text"],
-    cost: { input: 0.95, output: 4.0, cacheRead: 0.19, cacheWrite: 0 },
-    contextWindow: 262_144,
-    maxTokens: 131_072,
+    // Z.ai docs: text parameters are consistent with GLM-5.3 and thinking
+    // cannot be disabled (thinking.type only supports enabled), so the
+    // reasoning_effort enum is low/high/max with off/minimal/medium
+    // unsupported — same map as GLM-5.3.
     thinkingLevelMap: {
       off: null,
       minimal: null,
       low: "low",
-      medium: "medium",
+      medium: null,
       high: "high",
-      xhigh: null,
-    },
-  },
-  {
-    id: "cline-pass/kimi-k2.6",
-    name: "Kimi K2.6 (ClinePass)",
-    reasoning: true,
-    input: ["text"],
-    cost: { input: 0.95, output: 4.0, cacheRead: 0.16, cacheWrite: 0 },
-    contextWindow: 262_144,
-    maxTokens: 131_072,
-    thinkingLevelMap: {
-      off: null,
-      minimal: null,
-      low: "low",
-      medium: "medium",
-      high: "high",
-      xhigh: null,
+      xhigh: "max",
     },
   },
   {
@@ -192,6 +164,32 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
+    id: "cline-pass/muse-spark-1.3-contributor",
+    name: "Muse Spark 1.3 Contributor (ClinePass)",
+    reasoning: true,
+    input: ["text"],
+    // Contributor-tier pricing per Meta Model API launch materials
+    // ($0.10/$0.20). The contributor tier requires opting in to Meta
+    // training on prompts/completions — hence the steep discount.
+    cost: { input: 0.1, output: 0.2, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    // Max output per Meta's published muse-spark-1.3 spec (1M context).
+    maxTokens: 943_718,
+    // Muse Spark always reasons: reasoning_effort="none" returns HTTP 400,
+    // so "off" is unsupported. Meta's effort enum is minimal/low/medium/
+    // high/xhigh — pi's levels map 1:1. "max" exists upstream but is
+    // standard-tier only, not available on Contributor models, so pi's
+    // "xhigh" maps to "xhigh" rather than "max".
+    thinkingLevelMap: {
+      off: null,
+      minimal: "minimal",
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+    },
+  },
+  {
     id: "cline-pass/deepseek-v4-pro",
     name: "DeepSeek V4 Pro (ClinePass)",
     reasoning: true,
@@ -209,13 +207,19 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
-    id: "cline-pass/deepseek-v4-flash",
-    name: "DeepSeek V4 Flash (ClinePass)",
+    id: "cline-pass/deepseek-v4.1-flash",
+    name: "DeepSeek V4.1 Flash (ClinePass)",
     reasoning: true,
     input: ["text"],
+    // ClinePass docs have not published V4.1 Flash reference pricing yet;
+    // carrying the deprecated V4 Flash rates until then. Remote model
+    // discovery overrides these once the API exposes pricing.
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
+    // Same hybrid reasoning behaviour as the other DeepSeek entries:
+    // thinking can be disabled via effort "none", and pi's xhigh clamps
+    // to the only supported tier, "high".
     thinkingLevelMap: {
       off: "none",
       minimal: null,
