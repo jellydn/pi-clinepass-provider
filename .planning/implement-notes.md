@@ -95,3 +95,52 @@ _(append below — newest at bottom)_
 - **Type:** issue
 - **Detail:** the landing page implied an unsupported `high` reasoning level, architecture docs retained a stale line count, and the model-specific test did not pin catalog metadata.
 - **Follow-up:** listed the supported levels explicitly, removed the volatile line count, and added exact pricing and token-limit assertions.
+
+### 2026-09-18 — Sep 2026 catalog refresh verified against recommended-models endpoint
+
+- **Context:** implementing issue #79 (add MuseSpark 1.3 Contributor + DeepSeek v4.1-flash, remove deprecated models) before the 2026-09-21 cutoff
+- **Type:** finding
+- **Detail:** `/api/v1/models` returns no `cline-pass/` entries (445 upstream models only), but `/api/v1/ai/cline/recommended-models` exposes a `clinePass` array with exact slugs — including `cline-pass/muse-spark-1.3-contributor`, `cline-pass/deepseek-v4.1-flash`, and `cline-pass/glm-5.3-flash`. The deprecated IDs were still listed pre-cutoff. Cline's docs page had not yet been updated.
+- **Follow-up:** slugs verified before merging, per the issue's acceptance criteria. GLM-5.3-Flash was out of the issue's scope but added on request; worth confirming it stays in the catalog after the cutoff.
+
+### 2026-09-18 — Muse Spark contributor tier excludes upstream max effort
+
+- **Context:** deriving the `thinkingLevelMap` for `cline-pass/muse-spark-1.3-contributor` from Meta Model API docs
+- **Type:** learning
+- **Detail:** Muse Spark always reasons (`reasoning_effort: "none"` → HTTP 400, so `off: null`), and Meta's enum is minimal/low/medium/high/xhigh — but `"max"` is standard-tier `muse-spark-1.3` only and explicitly unavailable on Contributor models. pi's `xhigh` therefore maps to `"xhigh"`, not `"max"`, unlike GLM-5.3/Kimi K3.
+- **Follow-up:** pinned by the unit test "Muse Spark 1.3 Contributor maps pi levels 1:1".
+
+### 2026-09-18 — DeepSeek V4.1 Flash reference pricing not yet published
+
+- **Context:** populating cost metadata for the new DeepSeek entry
+- **Type:** issue
+- **Detail:** Cline's docs still show the old catalog with V4 Flash pricing only. Third-party trackers diverge ($0.22/$0.66 Fireworks, $0.30/$1.20 Requesty, $0.15/$0.60 off-peak direct), so no authoritative ClinePass rate exists yet.
+- **Follow-up:** entry carries the deprecated V4 Flash rates as a placeholder with a code comment; remote model discovery overrides cost automatically once the API exposes V4.1 pricing. Revisit after 2026-09-21.
+
+### 2026-09-18 — PR #80 review: catalog and documentation gaps
+
+- **Context:** reviewing issue #79 and PR #80 against live Cline and upstream documentation
+- **Type:** issue
+- **Detail:** Cline's recommended-models endpoint confirms all 12 proposed IDs; `/api/v1/models` still exposes upstream IDs without ClinePass metadata. Meta's pricing page lists Contributor cached input at $0.002/M, not zero, and its model docs distinguish hosted Muse Spark from open-weight Muse Glimmer. README/site omit the Contributor training-data caveat and DeepSeek placeholder-price warning. README retains an obsolete catalog image and incorrectly groups GLM-5.2 with Kimi replacements. Remote discovery can reintroduce retired IDs; DeepSeek metadata and the new models' discovery maps need regression coverage.
+- **Follow-up:** fix the confirmed gaps without adding aliases or changing the discovery endpoint. Keep input text-only until ClinePass multimodal support is verified. Live completion checks need `CLINE_API_KEY`, which is not configured in this orb. Sources: https://dev.meta.ai/docs/models and https://dev.meta.ai/docs/pricing-rate-limits.
+
+### 2026-09-18 — fresh ClinePass pricing check during PR #80 review
+
+- **Context:** user requested a fresh read of https://docs.cline.bot/getting-started/clinepass
+- **Type:** finding
+- **Detail:** the page still lists the old catalog and omits all three additions, but now lists DeepSeek peak/off-peak rates. The inherited V4 Flash $0.14/$0.28/$0.0028 rates are stale. DeepSeek's official pricing page identifies Flash as V4.1 and lists peak $0.30/$1.20/$0.006, with off-peak at half those rates. The ClinePass page promises 2–5x usage, not rate limits. OpenRouter's public model API confirms Muse Contributor's 943,718 output limit; this was not found in Meta's own model page.
+- **Follow-up:** replace the inherited DeepSeek Flash estimate with upstream peak pricing and explicit ClinePass/peak caveats. Leave the pre-existing V4 Pro pricing drift outside this catalog refresh and flag it for follow-up. Preserve the minor changeset for the upstream catalog refresh, with an explicit saved-selection migration warning. No release or merge performed.
+
+### 2026-09-20 — PR #80 release verification endpoint
+
+- **Context:** addressing CodeRabbit's published review before merging PR #80
+- **Type:** issue
+- **Detail:** the release checklist still directed model-ID checks to `/models`, despite the earlier finding that the model list exposes upstream IDs. The PR description also retained the superseded DeepSeek V4 Flash pricing explanation.
+- **Follow-up:** use the recommended-models endpoint's `clinePass` slugs in the checklist and update the PR description to state the current upstream peak estimates and exact-ID discovery requirement.
+
+### 2026-09-20 — full catalog verification permits only explained differences
+
+- **Context:** CodeRabbit's follow-up requested full-set verification instead of a spot-check
+- **Type:** finding
+- **Detail:** all 12 static IDs occur in the live recommended-models response. Its four additional IDs are exactly the intentionally retired models. Strict set equality would therefore reject the intended pre-cutoff catalog; remote discovery also deliberately supports future IDs outside the static catalog.
+- **Follow-up:** require checking every static ID and documenting every remote-only ID. Missing static IDs and unexplained differences fail release verification.

@@ -8,10 +8,10 @@ This document defines the ubiquitous language for the `pi-clinepass-provider` pr
 
 ### ClinePass
 
-A $9.99/month subscription service from Cline that provides access to curated open-weight coding models through an OpenAI-compatible API. ClinePass includes 2-5x standard API rate limits.
+A $9.99/month subscription service from Cline that provides access to curated coding models through an OpenAI-compatible API. ClinePass includes 2-5x the usage compared to standard API rates.
 
 - **Not** a model provider itself — it is a gateway to upstream model providers (GLM, Kimi, DeepSeek, etc.)
-- Models are identified by the `cline-pass/` prefix (e.g., `cline-pass/deepseek-v4-flash`)
+- Models are identified by the `cline-pass/` prefix (e.g., `cline-pass/deepseek-v4.1-flash`)
 
 ### pi Extension
 
@@ -19,7 +19,7 @@ A TypeScript module loaded by the pi coding agent that registers a model provide
 
 ### Provider
 
-A model provider registered with pi. In this extension, the single provider is `"clinepass"`. Models under this provider are referenced as `clinepass/<model-slug>` (e.g., `clinepass/cline-pass/deepseek-v4-flash`).
+A model provider registered with pi. In this extension, the single provider is `"clinepass"`. Models under this provider are referenced as `clinepass/<model-slug>` (e.g., `clinepass/cline-pass/deepseek-v4.1-flash`).
 
 ---
 
@@ -54,11 +54,11 @@ A JSON file that pi uses to persist OAuth credentials. Two formats exist:
 
 ### Static Model Catalog
 
-A hardcoded list of 12 curated models (GLM-5.2, Kimi K2.7 Code, Kimi K2.6, Kimi K3, DeepSeek V4 Pro, DeepSeek V4 Flash, MiMo-V2.5, MiMo-V2.5-Pro, MiniMax M3, Qwen3.7 Max, Qwen3.7 Plus, Qwen3.8 Max) with reference pricing, context windows, and token limits.
+A hardcoded list of 12 curated models (GLM-5.3, GLM-5.3-Flash, Kimi K3, Muse Spark 1.3 Contributor, DeepSeek V4 Pro, DeepSeek V4.1 Flash, MiMo-V2.5, MiMo-V2.5-Pro, MiniMax M3, Qwen3.7 Max, Qwen3.7 Plus, Qwen3.8 Max) with reference pricing, context windows, and token limits. Deprecations effective 2026-09-21 removed GLM-5.2, Kimi K2.7 Code, Kimi K2.6, and DeepSeek V4 Flash.
 
 ### Dynamic Model Discovery
 
-A runtime fetch from Cline's `/api/v1/models` endpoint (OpenAI-compatible format) that returns the live model list. Models not prefixed with `cline-pass/` are filtered out. Falls back to the static catalog on any error (network failure, 404, parse error, empty list).
+A runtime fetch from Cline's `/api/v1/models` endpoint (OpenAI-compatible format) that returns the live model list. Models not prefixed with `cline-pass/` and retired catalog IDs are filtered out. Falls back to the static catalog on any error or when no usable models remain.
 
 ### Model Compatibility Override
 

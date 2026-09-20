@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **GLM-5.3 model** — registered `cline-pass/glm-5.3` (Z.ai) in the static catalog with 1M context / 128K output. GLM-5.3 always reasons and cannot be disabled; its `reasoning_effort` enum is `low`/`high`/`max` (default `max`) with no `medium` or `xhigh` tier, so pi's `off`/`minimal`/`medium` map to `null` and `xhigh` maps to `max` (every offered level distinct and increasing). Pricing mirrors GLM-5.2 per the ClinePass docs ($1.40/$4.40/$0.26).
+- **GLM-5.3-Flash model** — registered `cline-pass/glm-5.3-flash` (Z.ai's first natively multimodal GLM-5 model) with 1M context / 128K output. Text parameters are consistent with GLM-5.3 (low/high/max, thinking always on); pricing is Z.ai's published $0.15/$0.50/$0.03.
+- **Muse Spark 1.3 Contributor model** — registered `cline-pass/muse-spark-1.3-contributor` (Meta) with 1M context / ~944K output and upstream contributor-tier reference pricing ($0.10/$0.20/$0.002 input/output/cached input). Muse Spark is hosted, not open-weight. Meta's Contributor tier permits training on prompts/completions; check Cline's applicable terms before sending private code. Muse Spark always reasons (`reasoning_effort: "none"` returns HTTP 400), so pi's `off` maps to `null`; minimal/low/medium/high/xhigh map 1:1. The upstream `max` tier is Standard-only.
+- **DeepSeek V4.1 Flash model** — registered `cline-pass/deepseek-v4.1-flash` (1M context / 384K output) replacing `cline-pass/deepseek-v4-flash`. Uses upstream peak reference rates ($0.30/$1.20/$0.006 input/output/cached input); upstream off-peak rates are half. ClinePass rates for all three new models remain unconfirmed. Discovery overrides prices only for exact `cline-pass/` IDs with pricing metadata; the public endpoint currently returns upstream IDs without that metadata.
+
+### Removed
+
+- **Deprecated models ([#79](https://github.com/jellydn/pi-clinepass-provider/issues/79))** — removes `cline-pass/glm-5.2` (→ GLM-5.3), `cline-pass/kimi-k2.7-code` and `cline-pass/kimi-k2.6` (→ Kimi K3), and `cline-pass/deepseek-v4-flash` (→ DeepSeek V4.1 Flash) from both static and dynamic catalogs immediately, ahead of Cline's announced 2026-09-21 cutoff. Update saved selections and scripts; no aliases are provided. Runtime TypeScript contracts are unchanged, but removed model selections are not backward-compatible.
 
 ### Docs
 
