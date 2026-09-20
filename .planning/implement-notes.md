@@ -130,3 +130,10 @@ _(append below — newest at bottom)_
 - **Type:** finding
 - **Detail:** the page still lists the old catalog and omits all three additions, but now lists DeepSeek peak/off-peak rates. The inherited V4 Flash $0.14/$0.28/$0.0028 rates are stale. DeepSeek's official pricing page identifies Flash as V4.1 and lists peak $0.30/$1.20/$0.006, with off-peak at half those rates. The ClinePass page promises 2–5x usage, not rate limits. OpenRouter's public model API confirms Muse Contributor's 943,718 output limit; this was not found in Meta's own model page.
 - **Follow-up:** replace the inherited DeepSeek Flash estimate with upstream peak pricing and explicit ClinePass/peak caveats. Leave the pre-existing V4 Pro pricing drift outside this catalog refresh and flag it for follow-up. Preserve the minor changeset for the upstream catalog refresh, with an explicit saved-selection migration warning. No release or merge performed.
+
+### 2026-09-20 — PR #80 release verification endpoint
+
+- **Context:** addressing CodeRabbit's published review before merging PR #80
+- **Type:** issue
+- **Detail:** the release checklist still directed model-ID checks to `/models`, despite the earlier finding that the model list exposes upstream IDs. The PR description also retained the superseded DeepSeek V4 Flash pricing explanation.
+- **Follow-up:** use the recommended-models endpoint's `clinePass` slugs in the checklist and update the PR description to state the current upstream peak estimates and exact-ID discovery requirement.
