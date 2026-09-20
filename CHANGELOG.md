@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-09-20
+
 ### Added
 
 - **GLM-5.3 model** — registered `cline-pass/glm-5.3` (Z.ai) in the static catalog with 1M context / 128K output. GLM-5.3 always reasons and cannot be disabled; its `reasoning_effort` enum is `low`/`high`/`max` (default `max`) with no `medium` or `xhigh` tier, so pi's `off`/`minimal`/`medium` map to `null` and `xhigh` maps to `max` (every offered level distinct and increasing). Pricing mirrors GLM-5.2 per the ClinePass docs ($1.40/$4.40/$0.26).
@@ -17,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Deprecated models ([#79](https://github.com/jellydn/pi-clinepass-provider/issues/79))** — removes `cline-pass/glm-5.2` (→ GLM-5.3), `cline-pass/kimi-k2.7-code` and `cline-pass/kimi-k2.6` (→ Kimi K3), and `cline-pass/deepseek-v4-flash` (→ DeepSeek V4.1 Flash) from both static and dynamic catalogs immediately, ahead of Cline's announced 2026-09-21 cutoff. Update saved selections and scripts; no aliases are provided. Runtime TypeScript contracts are unchanged, but removed model selections are not backward-compatible.
+
+### Changed
+
+- **pi 0.86.0 dev range** — bump `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` to `^0.86.0`. Peer ranges stay `*` (any installed pi). No custom `streamSimple` migration: ClinePass still uses built-in `openai-completions`. Tooling patches in the same release: `pi-ai` 0.84.4, `@types/node` 26.6.2, `vitest` 5.0.1, `oxlint` 1.83.0, `oxfmt` 0.68.0.
 
 ### Docs
 

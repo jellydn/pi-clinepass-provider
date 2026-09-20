@@ -144,3 +144,10 @@ _(append below — newest at bottom)_
 - **Type:** finding
 - **Detail:** all 12 static IDs occur in the live recommended-models response. Its four additional IDs are exactly the intentionally retired models. Strict set equality would therefore reject the intended pre-cutoff catalog; remote discovery also deliberately supports future IDs outside the static catalog.
 - **Follow-up:** require checking every static ID and documenting every remote-only ID. Missing static IDs and unexplained differences fail release verification.
+
+### 2026-09-20 — pi 0.86.0 range bump is not a custom-stream migration
+
+- **Context:** splitting `bun outdated` / npm latest into in-range patches vs an intentional pi `^0.86.0` bump
+- **Type:** finding
+- **Detail:** caret on `0.84.x` / `0.85.x` cannot resolve `0.86.0`. The 0.86.0 breaking change (stream inputs `Context` → `TranscriptContext`, `getCurrentSystemPrompt()` / `getCurrentTools()`) applies to custom `streamSimple` providers. This extension still uses `api: "openai-completions"`, which remains a `KnownApi`. `pi.on("message_end", …)` still exists; `on()` now returns an unsubscribe function (additive). `refreshToken` is typed as `(credentials, signal: AbortSignal)` — our implementation omits `signal` and still type-checks because extra parameters are ignorable; WorkOS refresh already uses a 15s `AbortSignal.timeout`. E2E CLI flags `--no-extensions`, `-e`, `--model`, `--no-tools`, `-p` are unchanged in pi 0.86.0. Local `npm install --no-save` of `0.80.2` still passes `typecheck` + unit tests. oxfmt `0.68.0` did not reformat `src/` or `tests/`.
+- **Follow-up:** optionally thread pi's abort signal into `refreshWorkosToken` so cancelled refreshes stop before the 15s timeout. Do not add a `bun.lock` alongside `package-lock.json`.
