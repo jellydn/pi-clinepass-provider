@@ -48,7 +48,7 @@ If the automated smoke test passes, additionally verify:
 - [ ] **Login flow (WorkOS OAuth)** — if you have `cline auth` credentials, `pi /login` → ClinePass detects them automatically
 - [ ] **Login flow (static API key)** — `pi /login` → ClinePass → paste key works without errors
 - [ ] **Error handling** — using an invalid API key produces a clear error message (not a stack trace)
-- [ ] **Model IDs match** — the model IDs in `src/models.ts` `MODELS` array match the `clinePass` slugs from `/api/v1/ai/cline/recommended-models` (spot-check 2-3 models)
+- [ ] **Model IDs match** — compare every exact ID in `src/models.ts` `MODELS` with the complete `clinePass` ID set from `/api/v1/ai/cline/recommended-models`. Fail verification if any static ID is missing. Review every remote-only ID and document why it is excluded (for example, an intentionally retired ID still advertised before the cutoff, or a new model supported only through discovery). Do not pass with unexplained differences or use a spot-check.
 
 ## 3. Update Changelog
 

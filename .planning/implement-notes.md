@@ -137,3 +137,10 @@ _(append below — newest at bottom)_
 - **Type:** issue
 - **Detail:** the release checklist still directed model-ID checks to `/models`, despite the earlier finding that the model list exposes upstream IDs. The PR description also retained the superseded DeepSeek V4 Flash pricing explanation.
 - **Follow-up:** use the recommended-models endpoint's `clinePass` slugs in the checklist and update the PR description to state the current upstream peak estimates and exact-ID discovery requirement.
+
+### 2026-09-20 — full catalog verification permits only explained differences
+
+- **Context:** CodeRabbit's follow-up requested full-set verification instead of a spot-check
+- **Type:** finding
+- **Detail:** all 12 static IDs occur in the live recommended-models response. Its four additional IDs are exactly the intentionally retired models. Strict set equality would therefore reject the intended pre-cutoff catalog; remote discovery also deliberately supports future IDs outside the static catalog.
+- **Follow-up:** require checking every static ID and documenting every remote-only ID. Missing static IDs and unexplained differences fail release verification.
