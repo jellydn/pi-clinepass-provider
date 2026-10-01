@@ -65,7 +65,7 @@ export default async function (pi: ExtensionAPI) {
     },
     // Spread the model object so all fields (including future ones like
     // `compat` / `thinkingFormat`) propagate to pi automatically. Only
-    // `input` needs transformation: readonly tuple → mutable array.
+    // `input` needs transformation: readonly modality array → mutable array.
     models: models.map((model) => ({
       ...model,
       input: [...model.input],
