@@ -60,15 +60,13 @@ describe("MODELS", () => {
     }
   });
 
-  it("enables image input for the nine multimodal models", () => {
-    // Per OpenRouter architecture.input_modalities, corroborated by vendor
-    // docs (MiMo-V2.5-Pro is native omni-modal per Xiaomi despite disputed
-    // OpenRouter metadata — see models.dev issue #1993).
+  it("enables image input for the eight multimodal models", () => {
+    // Per OpenRouter architecture.input_modalities. MiMo-V2.5-Pro is
+    // text-only; models.dev PR #1993 was closed with that correction.
     const imageModels = [
       "cline-pass/kimi-k3",
       "cline-pass/glm-5.3-flash",
       "cline-pass/mimo-v2.5",
-      "cline-pass/mimo-v2.5-pro",
       "cline-pass/minimax-m3",
       "cline-pass/muse-spark-1.3-contributor",
       "cline-pass/qwen3.8-max",
@@ -80,10 +78,11 @@ describe("MODELS", () => {
     }
   });
 
-  it("keeps text-only input for the three non-multimodal models", () => {
+  it("keeps text-only input for the four non-multimodal models", () => {
     const textModels = [
       "cline-pass/glm-5.3",
       "cline-pass/deepseek-v4-pro",
+      "cline-pass/mimo-v2.5-pro",
       "cline-pass/qwen3.7-max",
     ];
     for (const id of textModels) {

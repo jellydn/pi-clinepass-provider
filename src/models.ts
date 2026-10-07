@@ -256,7 +256,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/mimo-v2.5-pro",
     name: "MiMo-V2.5-Pro (ClinePass)",
     reasoning: true,
-    input: ["text", "image"],
+    input: ["text"],
     cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
