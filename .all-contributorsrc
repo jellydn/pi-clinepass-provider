@@ -64,6 +64,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "Leos0508",
+      "name": "Leos Pham",
+      "avatar_url": "https://avatars.githubusercontent.com/u/88046503?v=4",
+      "profile": "https://blog.leospham.site",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "commitType": "docs",
