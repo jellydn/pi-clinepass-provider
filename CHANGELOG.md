@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-10-07
+
+### Added
+
+- **Image input for multimodal models** — eight catalog models now declare `input: ["text", "image"]`: GLM-5.3-Flash, Kimi K3, Muse Spark 1.3 Contributor, DeepSeek V4.1 Flash, MiMo-V2.5, MiniMax M3, Qwen3.7 Plus, and Qwen3.8 Max. GLM-5.3, DeepSeek V4 Pro, MiMo-V2.5-Pro, and Qwen3.7 Max stay text-only. Previously every model was hard-declared text-only, so pi stripped pasted images before the request reached Cline. Dynamic discovery reads `architecture.input_modalities` and falls back to the static catalog. Images are sent as base64 `image_url` content through pi's built-in `openai-completions` streaming.
+
+### Changed
+
+- **pi 1.0.4 dev range** — `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` devDependencies are `^1.0.4`. Peer ranges stay `*` (any installed pi). This removes the lockfile split where typecheck used top-level `pi-ai@0.86.0` while `pi-coding-agent@1.0.4` nested `pi-ai@1.0.4`. `OAuthCredentials` is still `{ access, refresh, expires }`. `registerProvider(name, { api: "openai-completions", oauth, models })` is unchanged. CI still typechecks the minimum pin `0.80.2`. Tooling already on main since 1.5.0: `oxfmt` 0.72.0, `oxlint` 1.87.0, `vitest` 5.0.3, `@types/node` 26.6.4.
+
 ## [1.5.0] — 2026-09-20
 
 ### Added
