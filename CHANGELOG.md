@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **pi 1.0.4 dev range** — `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` devDependencies are `^1.0.4`. Peer ranges stay `*` (any installed pi). This removes the lockfile split where typecheck used top-level `pi-ai@0.86.0` while `pi-coding-agent@1.0.4` nested `pi-ai@1.0.4`. `OAuthCredentials` is still `{ access, refresh, expires }`. `registerProvider(name, { api: "openai-completions", oauth, models })` is unchanged. CI still typechecks the minimum pin `0.80.2`. Tooling already on main since 1.5.0: `oxfmt` 0.72.0, `oxlint` 1.87.0, `vitest` 5.0.3, `@types/node` 26.6.4.
 
+### Fixed
+
+- **Release scripts** — `release:patch`, `release:minor`, and `release:major` pass `--release` to bumpp 12. The old form put `patch` / `minor` / `major` after `--tag`, so bumpp treated that word as the tag name and still prompted for the version.
+
 ## [1.5.0] — 2026-09-20
 
 ### Added

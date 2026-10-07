@@ -50,9 +50,9 @@
     "contributors:add": "all-contributors add",
     "contributors:generate": "all-contributors generate",
     "release": "bumpp --commit --push --tag",
-    "release:patch": "bumpp --commit --push --tag patch",
-    "release:minor": "bumpp --commit --push --tag minor",
-    "release:major": "bumpp --commit --push --tag major",
+    "release:patch": "bumpp --yes --release patch --commit --push --tag",
+    "release:minor": "bumpp --yes --release minor --commit --push --tag",
+    "release:major": "bumpp --yes --release major --commit --push --tag",
     "pub": "npm publish"
   },
   "devDependencies": {
