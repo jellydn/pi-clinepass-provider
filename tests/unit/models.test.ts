@@ -48,7 +48,45 @@ describe("MODELS", () => {
       expect(m.contextWindow).toBeGreaterThan(0);
       expect(m.maxTokens).toBeGreaterThan(0);
       expect(m.reasoning).toBe(true);
-      expect(m.input).toEqual(["text"]);
+      expect(m.input[0]).toBe("text");
+    }
+  });
+
+  it("declares input as exactly text-only or text+image, no exceptions", () => {
+    for (const m of MODELS) {
+      const textOnly = m.input.length === 1 && m.input[0] === "text";
+      const textAndImage = m.input.length === 2 && m.input[0] === "text" && m.input[1] === "image";
+      expect(textOnly || textAndImage).toBe(true);
+    }
+  });
+
+  it("enables image input for the eight multimodal models", () => {
+    // Per OpenRouter architecture.input_modalities. MiMo-V2.5-Pro is
+    // text-only; models.dev PR #1993 was closed with that correction.
+    const imageModels = [
+      "cline-pass/kimi-k3",
+      "cline-pass/glm-5.3-flash",
+      "cline-pass/mimo-v2.5",
+      "cline-pass/minimax-m3",
+      "cline-pass/muse-spark-1.3-contributor",
+      "cline-pass/qwen3.8-max",
+      "cline-pass/qwen3.7-plus",
+      "cline-pass/deepseek-v4.1-flash",
+    ];
+    for (const id of imageModels) {
+      expect(MODELS.find((m) => m.id === id)!.input).toEqual(["text", "image"]);
+    }
+  });
+
+  it("keeps text-only input for the four non-multimodal models", () => {
+    const textModels = [
+      "cline-pass/glm-5.3",
+      "cline-pass/deepseek-v4-pro",
+      "cline-pass/mimo-v2.5-pro",
+      "cline-pass/qwen3.7-max",
+    ];
+    for (const id of textModels) {
+      expect(MODELS.find((m) => m.id === id)!.input).toEqual(["text"]);
     }
   });
 
@@ -413,6 +451,81 @@ describe("fetchRemoteModels", () => {
     expect(result![0].maxTokens).toBe(staticModel!.maxTokens);
     expect(result![0].cost.input).toBe(staticModel!.cost.input);
     expect(result![0].compat).toEqual(staticModel!.compat);
+  });
+
+  it("enables image input when remote architecture.input_modalities includes image", async () => {
+    // Even glm-5.3, statically text-only, upgrades to text+image when the
+    // remote catalog reports image modality.
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "cline-pass/glm-5.3",
+              architecture: { input_modalities: ["text", "image"] },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(1);
+    expect(result![0].input).toEqual(["text", "image"]);
+  });
+
+  it("falls back to the static entry's input when remote modalities omit image", async () => {
+    // glm-5.3-flash is statically image-capable — a remote entry listing
+    // text-only modalities must not downgrade it. An unknown ID without a
+    // static fallback stays text-only.
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: "cline-pass/glm-5.3-flash", architecture: { input_modalities: ["text"] } },
+            { id: "cline-pass/new-model", architecture: { input_modalities: ["text"] } },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(2);
+    expect(result![0].input).toEqual(["text", "image"]);
+    expect(result![1].input).toEqual(["text"]);
+  });
+
+  it("falls back safely on missing or invalid architecture metadata", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            // No architecture at all → static entry's input (glm-5.3: text).
+            { id: "cline-pass/glm-5.3" },
+            // Null architecture → static entry's input (kimi-k3: text+image).
+            { id: "cline-pass/kimi-k3", architecture: null },
+            // Non-array input_modalities → static entry's input (minimax-m3:
+            // text+image).
+            { id: "cline-pass/minimax-m3", architecture: { input_modalities: "text" } },
+            // Array of non-strings → static entry's input (qwen3.8-max:
+            // text+image).
+            { id: "cline-pass/qwen3.8-max", architecture: { input_modalities: ["text", 42] } },
+            // Same invalid shape but no static fallback → text-only.
+            { id: "cline-pass/new-model", architecture: { input_modalities: ["text", 42] } },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const result = await fetchRemoteModels({ apiKey: "test_key" });
+    expect(result).toHaveLength(5);
+    expect(result!.map((model) => model.input)).toEqual([
+      ["text"],
+      ["text", "image"],
+      ["text", "image"],
+      ["text", "image"],
+      ["text"],
+    ]);
   });
 
   it("uses NO_THINKING_MAP when remote model reports reasoning: false", async () => {

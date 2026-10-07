@@ -4,7 +4,7 @@
  * @module clinepass-models
  */
 
-import { isRecord, stringValue, numberValue, booleanValue } from "./utils.js";
+import { isRecord, stringValue, numberValue, booleanValue, stringArrayValue } from "./utils.js";
 import { resolveApiBase } from "./env.js";
 
 // ─── Model Definitions ─────────────────────────────────────────────────────
@@ -63,6 +63,12 @@ export const CLINEPASS_OPENAI_COMPAT: ClinePassOpenAICompat = {
 };
 
 /**
+ * Input modalities a model accepts. Image-capable models declare
+ * `["text", "image"]`; text-only models declare `["text"]`.
+ */
+export type ModelInput = readonly ("text" | "image")[];
+
+/**
  * ClinePass curated coding models.
  *
  * Model IDs use the full ClinePass slug (e.g. "cline-pass/glm-5.3") as
@@ -77,7 +83,8 @@ export interface ModelConfig {
   id: string;
   name: string;
   reasoning: boolean;
-  input: readonly ["text"];
+  /** Input modalities ("text" and, for multimodal models, "image"). */
+  input: ModelInput;
   cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
   contextWindow: number;
   maxTokens: number;
@@ -126,7 +133,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/glm-5.3-flash",
     name: "GLM-5.3-Flash (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     // Z.ai standard API pricing (per 1M tokens): $0.15 in / $0.50 out /
     // $0.03 cached input.
     cost: { input: 0.15, output: 0.5, cacheRead: 0.03, cacheWrite: 0 },
@@ -149,7 +156,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/kimi-k3",
     name: "Kimi K3 (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     cost: { input: 3.0, output: 15.0, cacheRead: 0.3, cacheWrite: 0 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
@@ -167,7 +174,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/muse-spark-1.3-contributor",
     name: "Muse Spark 1.3 Contributor (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     // https://dev.meta.ai/docs/pricing-rate-limits (Contributor tier).
     // This tier permits Meta to train on prompts/completions.
     cost: { input: 0.1, output: 0.2, cacheRead: 0.002, cacheWrite: 0 },
@@ -209,7 +216,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/deepseek-v4.1-flash",
     name: "DeepSeek V4.1 Flash (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     // Upstream peak rates: https://api-docs.deepseek.com/quick_start/pricing
     // Off-peak rates are half. ClinePass V4.1 rates remain unconfirmed.
     // Discovery overrides these only for the exact cline-pass/ ID with pricing.
@@ -232,7 +239,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/mimo-v2.5",
     name: "MiMo-V2.5 (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
@@ -266,7 +273,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/minimax-m3",
     name: "MiniMax M3 (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
@@ -300,7 +307,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/qwen3.7-plus",
     name: "Qwen3.7 Plus (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     // Qwen3.7 Plus has tiered pricing; we use the ≤256K rate as the default.
     cost: { input: 0.4, output: 1.6, cacheRead: 0.04, cacheWrite: 0.5 },
     contextWindow: 1_048_576,
@@ -318,7 +325,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     id: "cline-pass/qwen3.8-max",
     name: "Qwen3.8 Max (ClinePass)",
     reasoning: true,
-    input: ["text"],
+    input: ["text", "image"],
     cost: { input: 2, output: 6, cacheRead: 0.25, cacheWrite: 2.5 },
     contextWindow: 1_000_000,
     maxTokens: 131_072,
@@ -371,7 +378,8 @@ const RETIRED_MODEL_IDS = new Set([
 
 /**
  * Raw model entry from the Cline API `/models` endpoint.
- * Follows the OpenAI-compatible format, with optional Cline extensions.
+ * Follows the OpenAI-compatible format, with optional Cline extensions
+ * (e.g. OpenRouter-style `architecture.input_modalities`).
  */
 interface RawModelEntry {
   id?: unknown;
@@ -380,6 +388,7 @@ interface RawModelEntry {
   max_output_tokens?: unknown;
   pricing?: unknown;
   reasoning?: unknown;
+  architecture?: { input_modalities?: unknown } | null;
 }
 
 /** Convert a per-token price from the API to our $/M tokens representation. */
@@ -401,6 +410,18 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
   const maxTokens = numberValue(raw.max_output_tokens) ?? fallback?.maxTokens ?? 8_192;
   const reasoning = booleanValue(raw.reasoning) ?? fallback?.reasoning ?? true;
 
+  // Derive input modalities from the remote entry's OpenRouter-style
+  // `architecture.input_modalities` when present: an array of strings that
+  // includes "image" marks the model as multimodal. Anything missing or
+  // invalid falls back to the static entry's declared input (or text-only
+  // for IDs outside the static catalog).
+  const inputModalities = isRecord(raw.architecture)
+    ? stringArrayValue(raw.architecture.input_modalities)
+    : undefined;
+  const input: ModelInput = inputModalities?.includes("image")
+    ? ["text", "image"]
+    : (fallback?.input ?? ["text"]);
+
   // Parse pricing — OpenAI format uses string $/token; we use $/M tokens
   const pricing = isRecord(raw.pricing) ? raw.pricing : undefined;
   const cost = {
@@ -414,7 +435,7 @@ function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConf
     id,
     name,
     reasoning,
-    input: ["text"],
+    input,
     cost,
     contextWindow,
     maxTokens,

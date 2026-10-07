@@ -122,9 +122,50 @@ run_test "Muse Spark 1.3 Contributor (simple math)" \
 
 echo ""
 
+# ─── Image Smoke Tests ───────────────────────────────────────────────────────
+
+echo -e "${YELLOW}3. Image Smoke Tests (pi $(pi --version))${NC}"
+
+# The fixture has three red squares, two blue circles, and one green triangle.
+# The prompt gives no counts: a text-only answer cannot establish image support.
+for model in \
+  cline-pass/glm-5.3-flash \
+  cline-pass/kimi-k3 \
+  cline-pass/muse-spark-1.3-contributor \
+  cline-pass/deepseek-v4.1-flash \
+  cline-pass/mimo-v2.5 \
+  cline-pass/minimax-m3 \
+  cline-pass/qwen3.7-plus \
+  cline-pass/qwen3.8-max; do
+  echo -n "  clinepass/$model (image counts) ... "
+  image_status=0
+  output=$(timeout "$TIMEOUT" pi --no-extensions \
+    -e "$PROVIDER_PATH" \
+    --model "clinepass/$model" \
+    --no-tools --no-session \
+    "@$PROVIDER_PATH/tests/e2e/shapes.png" \
+    -p "Count the red squares, blue circles, and green triangles in the attached image. Reply only in this format: red=N blue=N green=N") || image_status=$?
+
+  # Require a successful process AND the visual answer. Reject omissions even
+  # if some other part of the output happens to contain the expected counts.
+  if [ "$image_status" -eq 0 ] \
+    && ! echo "$output" | grep -qi "image omitted" \
+    && echo "$output" | grep -Eq '^red=3 blue=2 green=1[[:space:]]*$'; then
+    echo -e "${GREEN}PASS${NC} (red=3 blue=2 green=1)"
+    ((PASS++)) || true
+  else
+    echo -e "${RED}FAIL${NC} (exit $image_status)"
+    echo "    Expected visual answer: red=3 blue=2 green=1"
+    echo "    Got: $(echo "$output" | head -3)"
+    ((FAIL++)) || true
+  fi
+done
+
+echo ""
+
 # ─── Error Handling ──────────────────────────────────────────────────────────
 
-echo -e "${YELLOW}3. Error Handling${NC}"
+echo -e "${YELLOW}4. Error Handling${NC}"
 
 echo -n "  Invalid API key ... "
 output=$(CLINE_API_KEY="invalid_key_12345" \

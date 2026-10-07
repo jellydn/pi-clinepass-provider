@@ -51,20 +51,20 @@ pnpm add pi-clinepass-provider
 
 ## Supported Models
 
-| Model                      | Model ID                                | Context | Reasoning                                         |
-| :------------------------- | :-------------------------------------- | :------ | :------------------------------------------------ |
-| GLM-5.3                    | `cline-pass/glm-5.3`                    | 1M      | low / high / xhigh (xhigh → max; always on)       |
-| GLM-5.3-Flash              | `cline-pass/glm-5.3-flash`              | 1M      | low / high / xhigh (xhigh → max; always on)       |
-| Kimi K3                    | `cline-pass/kimi-k3`                    | 1M      | high (max; always on)                             |
-| Muse Spark 1.3 Contributor | `cline-pass/muse-spark-1.3-contributor` | 1M      | minimal / low / medium / high / xhigh (always on) |
-| DeepSeek V4 Pro            | `cline-pass/deepseek-v4-pro`            | 1M      | off + high (high used for xhigh)                  |
-| DeepSeek V4.1 Flash        | `cline-pass/deepseek-v4.1-flash`        | 1M      | off + high (high used for xhigh)                  |
-| MiMo-V2.5                  | `cline-pass/mimo-v2.5`                  | 262K    | off / low / medium / high                         |
-| MiMo-V2.5-Pro              | `cline-pass/mimo-v2.5-pro`              | 262K    | off / low / medium / high                         |
-| MiniMax M3                 | `cline-pass/minimax-m3`                 | 1M      | off / low / medium / high                         |
-| Qwen3.7 Max                | `cline-pass/qwen3.7-max`                | 262K    | off / low / medium / high                         |
-| Qwen3.7 Plus               | `cline-pass/qwen3.7-plus`               | 1M      | off / low / medium / high                         |
-| Qwen3.8 Max                | `cline-pass/qwen3.8-max`                | 1M      | low / medium / xhigh                              |
+| Model                      | Model ID                                | Context | Input        | Reasoning                                         |
+| :------------------------- | :-------------------------------------- | :------ | :----------- | :------------------------------------------------ |
+| GLM-5.3                    | `cline-pass/glm-5.3`                    | 1M      | text         | low / high / xhigh (xhigh → max; always on)       |
+| GLM-5.3-Flash              | `cline-pass/glm-5.3-flash`              | 1M      | text + image | low / high / xhigh (xhigh → max; always on)       |
+| Kimi K3                    | `cline-pass/kimi-k3`                    | 1M      | text + image | high (max; always on)                             |
+| Muse Spark 1.3 Contributor | `cline-pass/muse-spark-1.3-contributor` | 1M      | text + image | minimal / low / medium / high / xhigh (always on) |
+| DeepSeek V4 Pro            | `cline-pass/deepseek-v4-pro`            | 1M      | text         | off + high (high used for xhigh)                  |
+| DeepSeek V4.1 Flash        | `cline-pass/deepseek-v4.1-flash`        | 1M      | text + image | off + high (high used for xhigh)                  |
+| MiMo-V2.5                  | `cline-pass/mimo-v2.5`                  | 262K    | text + image | off / low / medium / high                         |
+| MiMo-V2.5-Pro              | `cline-pass/mimo-v2.5-pro`              | 262K    | text         | off / low / medium / high                         |
+| MiniMax M3                 | `cline-pass/minimax-m3`                 | 1M      | text + image | off / low / medium / high                         |
+| Qwen3.7 Max                | `cline-pass/qwen3.7-max`                | 262K    | text         | off / low / medium / high                         |
+| Qwen3.7 Plus               | `cline-pass/qwen3.7-plus`               | 1M      | text + image | off / low / medium / high                         |
+| Qwen3.8 Max                | `cline-pass/qwen3.8-max`               | 1M      | text + image | low / medium / xhigh                              |
 
 > **Migration:** This update removes four IDs immediately, in preparation for Cline's announced September 21, 2026 cutoff (12:00 AM PST, as quoted in [#79](https://github.com/jellydn/pi-clinepass-provider/issues/79)). Update saved model selections and scripts: `cline-pass/glm-5.2` → `cline-pass/glm-5.3`; `cline-pass/kimi-k2.7-code` and `cline-pass/kimi-k2.6` → `cline-pass/kimi-k3`; `cline-pass/deepseek-v4-flash` → `cline-pass/deepseek-v4.1-flash`. There are no aliases. Retired IDs are also excluded from dynamic discovery.
 
@@ -72,7 +72,9 @@ pnpm add pi-clinepass-provider
 
 > **Reference prices are estimates, not bills or exact quota measurements.** ClinePass is a flat subscription. The three new models use upstream reference rates because the [ClinePass page](https://docs.cline.bot/getting-started/clinepass) does not yet list their rates. DeepSeek V4.1 Flash uses upstream peak rates ($0.30 input / $1.20 output / $0.006 cached input per million tokens); upstream off-peak rates are half. Muse uses $0.10 / $0.20 / $0.002 and GLM-5.3-Flash uses $0.15 / $0.50 / $0.03. Discovery overrides prices only when `/api/v1/models` returns the exact `cline-pass/` ID with pricing metadata; the public endpoint currently returns upstream IDs without that metadata.
 
-All models are exposed as text-only by this extension. Upstream multimodal support does not establish image support through ClinePass.
+Image input is enabled for the models whose upstream is multimodal (GLM-5.3-Flash, Kimi K3, Muse Spark 1.3 Contributor, DeepSeek V4.1 Flash, MiMo-V2.5, MiniMax M3, Qwen3.7 Plus, Qwen3.8 Max); the rest (GLM-5.3, DeepSeek V4 Pro, MiMo-V2.5-Pro, Qwen3.7 Max) are text-only. Images are sent as base64 `image_url` content via pi's built-in `openai-completions` streaming. During dynamic model discovery, input modality is derived from the remote entry's `architecture.input_modalities` metadata (an array containing `"image"` marks the model image-capable), falling back to the static catalog's declaration when the metadata is missing or invalid.
+
+Upstream capabilities do not by themselves verify the ClinePass route. Run `CLINE_API_KEY=... npm run test:e2e` with pi installed to check the live path: the image cases attach a known shape-count fixture to each of the eight image-capable models and require the correct visual answer. MiMo-V2.5-Pro is not the multimodal MiMo-V2.5 variant.
 
 > **Thinking levels**: pi supports 6 levels — `off`, `minimal`, `low`, `medium`, `high`, `xhigh`. Each model declares which levels it supports, mapped to the provider's `reasoning_effort` parameter. Set the thinking level with pi's `--thinking` flag or `/thinking` command. A level marked as unsupported (not listed above) maps to `null` — no `reasoning_effort` is sent to the API, so the model runs with its default reasoning behavior.
 

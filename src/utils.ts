@@ -25,3 +25,8 @@ export function numberValue(value: unknown): number | undefined {
 export function booleanValue(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
+
+export function stringArrayValue(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.every((item) => typeof item === "string") ? (value as string[]) : undefined;
+}

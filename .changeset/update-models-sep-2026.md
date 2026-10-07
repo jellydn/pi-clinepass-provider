@@ -21,7 +21,7 @@ but saved selections using removed IDs are not backward-compatible.
 
 Muse Spark is hosted, not open-weight. Meta's Contributor tier permits training
 on prompts and completions; check Cline's applicable terms before sending private code.
-This extension exposes all models as text-only.
+Model input modality now reflects upstream capabilities: image-capable models accept image input, while genuinely text-only models remain text-only.
 
 Exact model IDs were verified against Cline's
 `/api/v1/ai/cline/recommended-models` endpoint (`clinePass` array). DeepSeek
