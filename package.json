@@ -43,6 +43,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "bash tests/e2e/smoke.sh",
+    "check:catalog": "bun tests/release/check-catalog.ts",
     "lint": "oxlint --config .oxlintrc.json src/ tests/",
     "format": "oxfmt --write src/ tests/",
     "format:check": "oxfmt --check src/ tests/",

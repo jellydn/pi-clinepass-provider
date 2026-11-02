@@ -24,15 +24,16 @@ No build step. Pi loads `.ts` source directly (`tsconfig.json` has `noEmit: true
 
 ## Commands
 
-| Command                | Purpose                                 |
-| ---------------------- | --------------------------------------- |
-| `npm test`             | Run unit tests via Vitest               |
-| `npm run test:watch`   | Run tests in watch mode                 |
-| `npm run test:e2e`     | E2E smoke tests (needs `CLINE_API_KEY`) |
-| `npm run lint`         | Lint all files with oxlint              |
-| `npm run format`       | Auto-format all files with oxfmt        |
-| `npm run format:check` | Check formatting without writing        |
-| `npm run typecheck`    | TypeScript strict mode check            |
+| Command                 | Purpose                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `npm test`              | Run unit tests via Vitest                                   |
+| `npm run test:watch`    | Run tests in watch mode                                     |
+| `npm run test:e2e`      | E2E smoke tests (needs `CLINE_API_KEY`)                     |
+| `npm run check:catalog` | Release-time pass lineup comparison (needs Bun, no API key) |
+| `npm run lint`          | Lint all files with oxlint                                  |
+| `npm run format`        | Auto-format all files with oxfmt                            |
+| `npm run format:check`  | Check formatting without writing                            |
+| `npm run typecheck`     | TypeScript strict mode check                                |
 
 Run `prek run --all-files` before pushing to run the full pre-commit suite.
 
@@ -47,12 +48,12 @@ Run `prek run --all-files` before pushing to run the full pre-commit suite.
 
 ### Architecture
 
-- **Dependency injection via options objects** — all I/O (file reading, fetching, env vars) is injectable through interfaces like `AuthKeyOptions`, `RemoteModelsOptions`, `WorkosRefreshOptions`. This makes every function testable without mocking globals.
+- **Dependency injection via options objects** — runtime I/O (file reading, fetching, env vars) is injectable through interfaces like `AuthKeyOptions` and `WorkosRefreshOptions`. Model registration uses the explicit catalog without I/O.
 - **Shared abstractions** live in their canonical module:
   - `src/auth.ts` — file-walking helpers (`walkAuthPaths`, `walkClineProviderSettings`)
   - `src/workos.ts` — WorkOS protocol knowledge (token prefix, refresh, credential extraction)
   - `src/env.ts` — shared constants and environment helpers
-  - `src/utils.ts` — pure type guards (`isRecord`, `stringValue`, `numberValue`, `booleanValue`)
+  - `src/utils.ts` — pure type guards (`isRecord`, `stringValue`)
 - **No circular dependencies** between modules.
 - **No feature logic leaking into shared paths** — each module owns a single concern.
 
@@ -82,7 +83,7 @@ Files should stay under 300 lines. If a module grows beyond that, extract a sub-
 ### Unit Tests
 
 - Tests live in `tests/unit/*.test.ts`, matched by Vitest's `tests/**/*.test.ts` glob.
-- **Every I/O surface is injectable** — tests use `AuthKeyOptions` / `RemoteModelsOptions` with mock `readFile`, `fileExists`, `fetch`, and `env` instead of touching the filesystem or network.
+- **Runtime I/O is injectable** — tests use `AuthKeyOptions` / `WorkosRefreshOptions` with mock `readFile`, `fileExists`, `fetch`, and `env` instead of touching the filesystem or network. Release catalog tests compare payloads without network requests; `npm run check:catalog` is a separate live release check.
 - **Comprehensive unit tests** — run with `npm test`.
 
 Example:

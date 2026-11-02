@@ -22,6 +22,9 @@ npm run lint
 # Format: consistent
 npm run format:check
 
+# Compare all curated IDs with Cline's public pass lineup (requires Bun; no API key)
+npm run check:catalog
+
 # Pre-commit hooks (via `prek` — global tool, install with `mise install prek`)
 prek run --all-files
 ```
@@ -43,12 +46,13 @@ npm run test:e2e
 
 If the automated smoke test passes, additionally verify:
 
-- [ ] **Model discovery** — `pi --list-models clinepass` shows the expected models (dynamic discovery may add/remove models)
+- [ ] **Model registration** — `pi --list-models clinepass` shows exactly the curated models, with or without credentials and with the network unavailable. Startup does not fetch a model catalog.
 - [ ] **Chat completions** — `pi --model clinepass/cline-pass/deepseek-v4.1-flash -p "Hello"` returns a coherent response
 - [ ] **Login flow (WorkOS OAuth)** — if you have `cline auth` credentials, `pi /login` → ClinePass detects them automatically
 - [ ] **Login flow (static API key)** — `pi /login` → ClinePass → paste key works without errors
 - [ ] **Error handling** — using an invalid API key produces a clear error message (not a stack trace)
-- [ ] **Model IDs match** — compare every exact ID in `src/models.ts` `MODELS` with the complete `clinePass` ID set from `/api/v1/ai/cline/recommended-models`. Fail verification if any static ID is missing. Review every remote-only ID and document why it is excluded (for example, an intentionally retired ID still advertised before the cutoff, or a new model supported only through discovery). Do not pass with unexplained differences or use a spot-check.
+- [ ] **Model IDs match** — `npm run check:catalog` compares every exact ID in `src/models.ts` `MODELS` with the complete `clinePass` set from `/api/v1/ai/cline/recommended-models`, using `CLINE_API_BASE` if set. It returns nonzero on any difference, malformed/empty data, HTTP error, or five-second timeout; it does not fall back to the local catalog. Do not pass release verification while a static ID is missing or any difference is unexplained. Review every remote-only ID and document any intentional exclusion (for example, a retired ID still advertised). An explained exclusion requires maintainer review of the full output; the command still reports the mismatch. Do not use a spot-check or infer retirement from a feed omission.
+- [ ] **Metadata and access verified separately** — the feed lists IDs, names, descriptions, and tags only. Check limits, reasoning, modalities, and reference pricing against documented sources and live pass-route tests where needed. Vendor catalog presence is not proof of pass access. Never replace known metadata with null or invent defaults for new IDs. New models require a reviewed catalog change and package release; this check never changes registration.
 
 ## 3. Update Changelog
 

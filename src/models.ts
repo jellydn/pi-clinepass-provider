@@ -1,11 +1,8 @@
 /**
- * ClinePass model definitions and dynamic model discovery.
+ * Curated ClinePass model definitions. Catalog changes require a release.
  *
  * @module clinepass-models
  */
-
-import { isRecord, stringValue, numberValue, booleanValue, stringArrayValue } from "./utils.js";
-import { resolveApiBase } from "./env.js";
 
 // ─── Model Definitions ─────────────────────────────────────────────────────
 
@@ -18,33 +15,6 @@ export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhi
  * Every model must declare all six levels — there are no implicit defaults.
  */
 export type ThinkingLevelMap = Readonly<Record<ThinkingLevel, string | null>>;
-
-/**
- * Default thinking level map for remote models without a static fallback.
- * Assumes low/medium/high are supported and marks minimal/xhigh unsupported.
- * "off" maps to "none" for the ClinePass API.
- */
-export const DEFAULT_THINKING_LEVEL_MAP: ThinkingLevelMap = {
-  off: "none",
-  minimal: null,
-  low: "low",
-  medium: "medium",
-  high: "high",
-  xhigh: null,
-};
-
-/**
- * All-null thinking level map used when a model reports reasoning: false.
- * Every level is unsupported — reasoning is simply not available.
- */
-export const NO_THINKING_MAP: ThinkingLevelMap = {
-  off: null,
-  minimal: null,
-  low: null,
-  medium: null,
-  high: null,
-  xhigh: null,
-};
 
 /**
  * OpenAI-compat flags for ClinePass chat completions.
@@ -241,8 +211,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     reasoning: true,
     input: ["text", "image"],
     // Upstream peak rates: https://api-docs.deepseek.com/quick_start/pricing
-    // Off-peak rates are half. ClinePass V4.1 rates remain unconfirmed.
-    // Discovery overrides these only for the exact cline-pass/ ID with pricing.
+    // ClinePass's reference table now confirms these rates; off-peak is half.
     cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
@@ -420,187 +389,4 @@ export const MODELS: readonly ModelConfig[] = MODELS_BASE.map((model) => ({
  */
 export function modelIds(): string[] {
   return MODELS.map((m) => m.id);
-}
-
-// ─── Dynamic Model Discovery ───────────────────────────────────────────────
-
-/** Endpoint for listing models (OpenAI-compatible, relative to API base). */
-export const MODELS_ENDPOINT = "/api/v1/models";
-
-/** Timeout for the model-list fetch (ms). Keeps registration responsive. */
-export const MODELS_FETCH_TIMEOUT_MS = 5_000;
-
-// Issue #79: do not restore the retired catalog through a stale API list.
-const RETIRED_MODEL_IDS = new Set([
-  "cline-pass/glm-5.2",
-  "cline-pass/kimi-k2.7-code",
-  "cline-pass/kimi-k2.6",
-  "cline-pass/deepseek-v4-flash",
-  "cline-pass/mimo-v2.5",
-  "cline-pass/mimo-v2.5-pro",
-]);
-
-/**
- * Raw model entry from the Cline API `/models` endpoint.
- * Follows the OpenAI-compatible format, with optional Cline extensions
- * (e.g. OpenRouter-style `architecture.input_modalities`).
- */
-interface RawModelEntry {
-  id?: unknown;
-  name?: unknown;
-  context_length?: unknown;
-  max_output_tokens?: unknown;
-  pricing?: unknown;
-  reasoning?: unknown;
-  architecture?: { input_modalities?: unknown } | null;
-}
-
-/** Convert a per-token price from the API to our $/M tokens representation. */
-function toMicroPerToken(val: unknown, fallbackVal: number): number {
-  const n = numberValue(val);
-  return n != null ? n * 1_000_000 : fallbackVal;
-}
-
-/**
- * Parse a single raw model entry into a `ModelConfig`.
- * Falls back to static-model values when the API doesn't provide a field.
- */
-function parseRemoteModel(raw: RawModelEntry, fallback?: ModelConfig): ModelConfig | undefined {
-  const id = stringValue(raw.id);
-  if (!id) return undefined;
-
-  const name = stringValue(raw.name) ?? fallback?.name ?? id;
-  const contextWindow = numberValue(raw.context_length) ?? fallback?.contextWindow ?? 128_000;
-  const maxTokens = numberValue(raw.max_output_tokens) ?? fallback?.maxTokens ?? 8_192;
-  const reasoning = booleanValue(raw.reasoning) ?? fallback?.reasoning ?? true;
-
-  // Derive input modalities from the remote entry's OpenRouter-style
-  // `architecture.input_modalities` when present: an array of strings that
-  // includes "image" marks the model as multimodal. Anything missing or
-  // invalid falls back to the static entry's declared input (or text-only
-  // for IDs outside the static catalog).
-  const inputModalities = isRecord(raw.architecture)
-    ? stringArrayValue(raw.architecture.input_modalities)
-    : undefined;
-  const input: ModelInput = inputModalities?.includes("image")
-    ? ["text", "image"]
-    : (fallback?.input ?? ["text"]);
-
-  // Parse pricing — OpenAI format uses string $/token; we use $/M tokens
-  const pricing = isRecord(raw.pricing) ? raw.pricing : undefined;
-  const cost = {
-    input: toMicroPerToken(pricing?.prompt, fallback?.cost.input ?? 0),
-    output: toMicroPerToken(pricing?.completion, fallback?.cost.output ?? 0),
-    cacheRead: toMicroPerToken(pricing?.cached_input, fallback?.cost.cacheRead ?? 0),
-    cacheWrite: fallback?.cost.cacheWrite ?? 0,
-  };
-
-  return {
-    id,
-    name,
-    reasoning,
-    input,
-    cost,
-    contextWindow,
-    maxTokens,
-    // Attach a reasoning-aware map: static fallback → sensible default → all-null.
-    thinkingLevelMap: reasoning
-      ? (fallback?.thinkingLevelMap ?? DEFAULT_THINKING_LEVEL_MAP)
-      : NO_THINKING_MAP,
-    compat: {
-      ...CLINEPASS_OPENAI_COMPAT,
-      ...fallback?.compat,
-    },
-  };
-}
-
-/**
- * Options for fetching remote models. All I/O is injectable for testability.
- */
-export interface RemoteModelsOptions {
-  apiBase?: string;
-  apiKey?: string;
-  fetch?: typeof globalThis.fetch;
-  timeoutMs?: number;
-}
-
-/**
- * Fetch the model list from the Cline API `/models` endpoint.
- *
- * Returns parsed `ModelConfig[]` on success, or `undefined` on any error
- * (network failure, non-OK response, parse error, empty list). Callers
- * should fall back to the static `MODELS` array when this returns `undefined`.
- *
- * The endpoint follows the OpenAI-compatible format: `{ data: [{ id, ... }] }`
- * or a bare array `[{ id, ... }]`. Only models with `cline-pass/` prefixed IDs
- * are included, excluding retired catalog IDs.
- */
-export async function fetchRemoteModels(
-  options: RemoteModelsOptions = {},
-): Promise<ModelConfig[] | undefined> {
-  const apiBase = options.apiBase ?? resolveApiBase();
-  const apiKey = options.apiKey;
-  const fetchFn = options.fetch ?? globalThis.fetch;
-  const timeoutMs = options.timeoutMs ?? MODELS_FETCH_TIMEOUT_MS;
-
-  if (!apiKey || !fetchFn) return undefined;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetchFn(`${apiBase}${MODELS_ENDPOINT}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: controller.signal,
-    });
-
-    if (!response.ok) return undefined;
-
-    const json: unknown = await response.json();
-    const rawList: RawModelEntry[] = Array.isArray(json)
-      ? json
-      : isRecord(json) && Array.isArray(json.data)
-        ? (json.data as RawModelEntry[])
-        : [];
-
-    if (rawList.length === 0) return undefined;
-
-    // Build a lookup from the static MODELS for fallback values
-    const staticById = new Map(MODELS.map((m) => [m.id, m]));
-
-    const parsed = rawList.reduce<ModelConfig[]>((acc, raw) => {
-      const id = stringValue(raw?.id);
-      if (!id?.startsWith("cline-pass/") || RETIRED_MODEL_IDS.has(id)) return acc;
-      const model = parseRemoteModel(raw, staticById.get(id));
-      if (model) acc.push(model);
-      return acc;
-    }, []);
-
-    return parsed.length > 0 ? parsed : undefined;
-  } catch {
-    return undefined;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Resolve the model list for registration.
- *
- * Tries the remote API first (if an API key is available), falling back to
- * the static `MODELS` array on any error. This keeps the extension functional
- * when the endpoint fails or returns no usable ClinePass entries.
- *
- * @param apiKey The API key to use for the fetch (optional)
- * @param options I/O options for testability
- */
-export async function resolveModels(
-  apiKey?: string,
-  options: RemoteModelsOptions = {},
-): Promise<readonly ModelConfig[]> {
-  if (apiKey) {
-    const remote = await fetchRemoteModels({ ...options, apiKey });
-    if (remote) return remote;
-  }
-  return MODELS;
 }
