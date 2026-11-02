@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-11-02
+
+### Added
+
+- **November ClinePass lineup** — adds Kimi K3.1 Pro, DeepSeek V4.1 Flash 1017, MiMo V2.6 Flash and Pro, and MiniMax M3.1 Flash. MiMo V2.6 Flash exposes a 1M context window. Update saved selections from `cline-pass/mimo-v2.5` to `cline-pass/mimo-v2.6-flash` and from `cline-pass/mimo-v2.5-pro` to `cline-pass/mimo-v2.6-pro`; the retired IDs have no aliases ([#100](https://github.com/jellydn/pi-clinepass-provider/pull/100)).
+- **Release-time catalog verification** — `npm run check:catalog` (requires Bun) compares every curated ID with the exact `clinePass` bucket in Cline's first-party lineup feed. It fails on differences or unavailable/malformed data and never changes runtime registration.
+
+### Changed
+
+- **Explicit static registration** — removes ineffective startup discovery through `/api/v1/models`, discovery-only parsers, and generic unknown-model defaults. The provider always registers the reviewed catalog without a catalog request or credential-store read for listing. No vendor-ID inference or automatic registration; model additions, retirements, and metadata changes require a package update ([#103](https://github.com/jellydn/pi-clinepass-provider/pull/103), [#101](https://github.com/jellydn/pi-clinepass-provider/issues/101)).
+- **Development compatibility** — lockfile pi dependencies move to 1.5.0 together; manifest and peer ranges are unchanged. Typecheck still covers minimum pi 0.80.2. Other development dependency and CI updates are included; there is still no build step ([#104](https://github.com/jellydn/pi-clinepass-provider/pull/104)).
+
+### Fixed
+
+- **Reference-price drift** — DeepSeek V4 Pro uses ClinePass peak estimates of $1.32 input / $3.96 output / $0.044 cached read per million tokens. Qwen3.8 Max cached read is $0.17. These bundled estimates are not bills or exact quota measurements.
+- **Documentation and regressions** — clarify static pricing/modalities and the eight-model image-smoke scope, preserve known metadata, reject malformed lineup feeds, and assert that registration makes no catalog request.
+
+### Release verification and limits
+
+- Unit tests, typecheck, lint, formatting, shell syntax, package contents, and all 15 lineup IDs were checked. CI covers lockfile pi on Node 22/24 and minimum pi 0.80.2 on Node 22. Pi 1.5.0 lists all 15 curated models with a registration-only placeholder key.
+- **Owner-approved waiver:** live authenticated E2E tests were explicitly waived for this release. Chat completions, image understanding, reasoning behavior, and live login/refresh remain unverified. The image smoke script covers eight of twelve configured image-capable models; Kimi K3.1 Pro, DeepSeek V4.1 Flash 1017, MiMo V2.6 Pro, and MiniMax M3.1 Flash are not in its image loop. Passing unit tests, accepting image payloads, or appearing in the lineup feed does not establish those routes or account entitlement.
+
 ## [1.6.0] — 2026-10-07
 
 ### Added
@@ -131,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - E2E smoke tests (manual trigger with `CLINE_API_KEY`)
 - CI matrix: Node 22 + Node 24, with minimum pi version pinning
 
-[Unreleased]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.6.0...v1.7.0
 [1.0.2]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/jellydn/pi-clinepass-provider/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/jellydn/pi-clinepass-provider/releases/tag/v1.0.0
