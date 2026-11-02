@@ -213,3 +213,10 @@ _(append below — newest at bottom)_
 - **Type:** finding
 - **Detail:** metadata assertions alone permit a needless startup fetch followed by static registration. Added an explicit no-fetch assertion across the existing registration scenarios. The image smoke loop covers eight of twelve configured image-capable models, not all twelve; README now names the four untested routes instead of overstating coverage. No runtime behavior or smoke-test scope changed.
 - **Verification:** all 166 tests, typecheck, oxlint, oxfmt, and diff whitespace checks pass. Biome reports no errors and eight existing non-null-assertion warnings in the changed test file. Live E2E was not run; no API key is available.
+
+### 2026-11-02 — open-PR review and release prerequisites
+
+- **Context:** owner authorized review of all open PRs, applicable fixes, safe merges, and the next release.
+- **Type:** blocker
+- **Detail:** GitHub lists only PR #103 and no drafts. Independent conventions and intent reviews found no actionable issues; structural review found no blocking abstractions or complexity. The two published bot findings are addressed. Current main's separate price fixes and orb scripts were merged into the PR branch without conflicts. This orb has no Cline API key for the release checklist's live E2E gate, and `npm whoami` returns ENEEDAUTH; no npm publishing workflow is configured. The GitHub integration cannot list Actions secrets. No visual-pr tool, CLI, or gh extension is installed, and exact underlying agent model identity is not exposed; do not fabricate either visual evidence or a model name.
+- **Follow-up:** finish verification and merge only the release-ready PR. Before tagging or publishing, obtain secure npm authentication and live E2E credentials or an explicit maintainer decision about that gate. npm currently serves 1.6.0; the pending November catalog changeset requests the next minor version, 1.7.0.
