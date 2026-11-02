@@ -182,6 +182,13 @@ _(append below — newest at bottom)_
 - **Follow-up:** thread pi's `AbortSignal` into the WorkOS refresh fetch if cancellation during refresh becomes a real failure. `npm outdated` is empty after the bump.
 - **Follow-up (2026-10-07):** `npm run release:minor` (`bumpp --commit --push --tag minor`) opened the version prompt and did not bump. bumpp 12's `--tag` takes an optional name, so `minor` is not the release type. Use `--release minor`. Scripts updated before the 1.6.0 tag.
 
+### 2026-11-02 — ClinePass curated-price drift and orb setup
+
+- **Context:** reviewing static reference prices and preparing fresh Amp orbs.
+- **Type:** finding
+- **Detail:** the live ClinePass pricing table lists DeepSeek V4 Pro peak rates of $1.32 input, $3.96 output, and $0.044 cached read per million tokens (off-peak rates are half); Qwen3.8 Max cached read is $0.17. The static catalog had stale values. The repository has no system-service or toolchain setup requirements beyond Node >=22 and the committed npm lockfile.
+- **Follow-up:** pin the documented peak/default rates in the static catalog and unit tests; use `.agents/setup` to restore dependencies with `npm ci` in fresh orbs.
+
 ### 2026-11-02 — PR #100 MiMo migration review
 
 - **Context:** addressing CodeRabbit and Copilot feedback on the November catalog refresh.
