@@ -61,7 +61,7 @@ pnpm add pi-clinepass-provider
 | DeepSeek V4 Pro            | `cline-pass/deepseek-v4-pro`            | 1M      | text         | off + high (high used for xhigh)                  |
 | DeepSeek V4.1 Flash        | `cline-pass/deepseek-v4.1-flash`        | 1M      | text + image | off + high (high used for xhigh)                  |
 | DeepSeek V4.1 Flash 1017   | `cline-pass/deepseek-v4.1-flash-1017`   | 1M      | text + image | off + high (high used for xhigh)                  |
-| MiMo V2.6 Flash            | `cline-pass/mimo-v2.6-flash`            | 262K    | text + image | off / low / medium / high                         |
+| MiMo V2.6 Flash            | `cline-pass/mimo-v2.6-flash`            | 1M      | text + image | off / low / medium / high                         |
 | MiMo V2.6 Pro              | `cline-pass/mimo-v2.6-pro`              | 262K    | text + image | off / low / medium / high                         |
 | MiniMax M3                 | `cline-pass/minimax-m3`                 | 1M      | text + image | off / low / medium / high                         |
 | MiniMax M3.1 Flash         | `cline-pass/minimax-m3.1-flash`         | 1M      | text + image | off / low / medium / high                         |

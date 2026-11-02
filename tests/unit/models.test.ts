@@ -47,6 +47,11 @@ describe("MODELS", () => {
     expect(MODELS.length).toBeGreaterThan(0);
   });
 
+  it("MiMo V2.6 Flash exposes a 1M context window", () => {
+    const model = MODELS.find((m) => m.id === "cline-pass/mimo-v2.6-flash")!;
+    expect(model.contextWindow).toBe(1_048_576);
+  });
+
   it("all models have valid cost and context fields", () => {
     for (const m of MODELS) {
       expect(m.cost.input).toBeGreaterThanOrEqual(0);

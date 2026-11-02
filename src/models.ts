@@ -284,7 +284,7 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     input: ["text", "image"],
     // ClinePass pricing table: $0.14 in / $0.28 out / $0.0028 cached read.
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
-    contextWindow: 262_144,
+    contextWindow: 1_048_576,
     maxTokens: 131_072,
     thinkingLevelMap: {
       off: "none",
