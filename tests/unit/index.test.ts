@@ -107,6 +107,7 @@ describe("provider registration", () => {
       const mod = await import("../../src/index.js");
       await mod.default(fakePi as never);
 
+      expect(fetch).not.toHaveBeenCalled();
       const models = captured!.config.models as Array<Record<string, unknown>>;
       expect(models).toHaveLength(MODELS.length);
 
