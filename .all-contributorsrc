@@ -74,6 +74,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "code-sharad",
+      "name": "Sharad Bhadait",
+      "avatar_url": "https://avatars.githubusercontent.com/u/61672294?v=4",
+      "profile": "http://iamsharad.in",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "commitType": "docs",
