@@ -179,7 +179,7 @@ describe("MODELS", () => {
     expect(model.cost).toEqual({
       input: 2,
       output: 6,
-      cacheRead: 0.25,
+      cacheRead: 0.17,
       cacheWrite: 2.5,
     });
     expect(model.contextWindow).toBe(1_000_000);
@@ -264,6 +264,11 @@ describe("MODELS", () => {
       expect(map.high).toBe("high");
       expect(map.xhigh).toBe("high");
     }
+  });
+
+  it("pins DeepSeek V4 Pro to the ClinePass peak reference rates", () => {
+    const model = MODELS.find((m) => m.id === "cline-pass/deepseek-v4-pro")!;
+    expect(model.cost).toEqual({ input: 1.32, output: 3.96, cacheRead: 0.044, cacheWrite: 0 });
   });
 
   it("GLM-5.3-Flash supports low/high/max only (thinking always on)", () => {

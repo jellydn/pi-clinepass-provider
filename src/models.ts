@@ -223,7 +223,9 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     name: "DeepSeek V4 Pro (ClinePass)",
     reasoning: true,
     input: ["text"],
-    cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
+    // ClinePass pricing table (peak); the table's off-peak rates are half:
+    // $0.66 input / $1.98 output / $0.022 cached read per 1M tokens.
+    cost: { input: 1.32, output: 3.96, cacheRead: 0.044, cacheWrite: 0 },
     contextWindow: 1_000_000,
     maxTokens: 384_000,
     thinkingLevelMap: {
@@ -388,7 +390,9 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     name: "Qwen3.8 Max (ClinePass)",
     reasoning: true,
     input: ["text", "image"],
-    cost: { input: 2, output: 6, cacheRead: 0.25, cacheWrite: 2.5 },
+    // ClinePass pricing table: $2 input / $6 output / $0.17 cached read /
+    // $2.50 cached write per 1M tokens.
+    cost: { input: 2, output: 6, cacheRead: 0.17, cacheWrite: 2.5 },
     contextWindow: 1_000_000,
     maxTokens: 131_072,
     // qwen3.8-max's reasoning_effort enum is low/medium/xhigh (default xhigh).
