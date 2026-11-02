@@ -105,8 +105,8 @@ run_test "DeepSeek V4.1 Flash (knowledge)" \
   "What is the capital of Japan? One word." \
   "tokyo"
 
-run_test "MiMo V2.5 (simple math)" \
-  "cline-pass/mimo-v2.5" \
+run_test "MiMo V2.6 Flash (simple math)" \
+  "cline-pass/mimo-v2.6-flash" \
   "What is 6+2? Answer with just the number." \
   "8"
 
@@ -133,7 +133,7 @@ for model in \
   cline-pass/kimi-k3 \
   cline-pass/muse-spark-1.3-contributor \
   cline-pass/deepseek-v4.1-flash \
-  cline-pass/mimo-v2.5 \
+  cline-pass/mimo-v2.6-flash \
   cline-pass/minimax-m3 \
   cline-pass/qwen3.7-plus \
   cline-pass/qwen3.8-max; do
