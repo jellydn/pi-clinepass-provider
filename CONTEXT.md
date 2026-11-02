@@ -54,11 +54,11 @@ A JSON file that pi uses to persist OAuth credentials. Two formats exist:
 
 ### Static Model Catalog
 
-A hardcoded list of 12 curated models (GLM-5.3, GLM-5.3-Flash, Kimi K3, Muse Spark 1.3 Contributor, DeepSeek V4 Pro, DeepSeek V4.1 Flash, MiMo-V2.5, MiMo-V2.5-Pro, MiniMax M3, Qwen3.7 Max, Qwen3.7 Plus, Qwen3.8 Max) with reference pricing, context windows, and token limits. Deprecations effective 2026-09-21 removed GLM-5.2, Kimi K2.7 Code, Kimi K2.6, and DeepSeek V4 Flash.
+A reviewed list of ClinePass model IDs with reference pricing, context windows, token limits, input modalities, and thinking levels. New models and retirements require a catalog update and a package release.
 
-### Dynamic Model Discovery
+### Pass Lineup Verification
 
-A runtime fetch from Cline's `/api/v1/models` endpoint (OpenAI-compatible format) that returns the live model list. Models not prefixed with `cline-pass/` and retired catalog IDs are filtered out. Falls back to the static catalog on any error or when no usable models remain.
+A release-time comparison of the curated catalog with Cline's first-party pass lineup. The lineup identifies pass model IDs, not account entitlement, prices, token limits, or capabilities. Catalog changes require review and a package release; runtime registration uses only the static catalog.
 
 ### Model Compatibility Override
 

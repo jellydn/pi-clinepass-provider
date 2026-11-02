@@ -7,9 +7,8 @@ import { MODELS } from "../../src/models.js";
  * Uses a fake ExtensionAPI that captures the call args so we can assert
  * baseUrl, apiKey sigil, api type, model forwarding, and oauth wiring.
  *
- * The default export is now async (dynamic model discovery), so all tests
- * await the call. fetch is stubbed to return a 404 so the static MODELS
- * fallback is used deterministically.
+ * The complete curated catalog must be registered without consulting a
+ * remote catalog, regardless of credentials or network availability.
  */
 describe("provider registration", () => {
   beforeEach(() => {
@@ -60,36 +59,89 @@ describe("provider registration", () => {
     expect(captured!.config.apiKey).toBe(`$${ENV_API_KEY}`);
   });
 
-  it("registers all static models as fallback when API is unavailable", async () => {
-    let captured: { config: Record<string, unknown> } | undefined;
+  it.each([
+    { key: "", remote: "offline" },
+    { key: "test-key", remote: "offline" },
+    { key: "test-key", remote: "vendor" },
+    { key: "test-key", remote: "pass" },
+  ])(
+    "registers only curated metadata with key '$key' and $remote data",
+    async ({ key, remote }) => {
+      vi.stubEnv(ENV_API_KEY, key);
+      vi.stubGlobal(
+        "fetch",
+        remote === "offline"
+          ? vi.fn().mockRejectedValue(new Error("offline"))
+          : vi.fn().mockResolvedValue(
+              new Response(
+                JSON.stringify({
+                  data: [
+                    {
+                      id: remote === "vendor" ? "other/glm-5.3" : "cline-pass/glm-5.3",
+                      context_length: null,
+                      max_output_tokens: null,
+                      pricing: { prompt: null, completion: "0" },
+                      reasoning: false,
+                      architecture: { input_modalities: ["text", "image"] },
+                    },
+                    {
+                      id:
+                        remote === "vendor"
+                          ? "other/unreviewed-model"
+                          : "cline-pass/unreviewed-model",
+                    },
+                  ],
+                }),
+              ),
+            ),
+      );
+      let captured: { config: Record<string, unknown> } | undefined;
 
-    const fakePi = {
-      registerProvider(_name: string, config: Record<string, unknown>) {
-        captured = { config };
-      },
-      on(_event: string, _handler: unknown) {},
-    };
+      const fakePi = {
+        registerProvider(_name: string, config: Record<string, unknown>) {
+          captured = { config };
+        },
+        on(_event: string, _handler: unknown) {},
+      };
 
-    const mod = await import("../../src/index.js");
-    await mod.default(fakePi as never);
+      const mod = await import("../../src/index.js");
+      await mod.default(fakePi as never);
 
-    const models = captured!.config.models as Array<Record<string, unknown>>;
-    // Falls back to static MODELS since fetch returns 404
-    expect(models).toHaveLength(MODELS.length);
+      expect(fetch).not.toHaveBeenCalled();
+      const models = captured!.config.models as Array<Record<string, unknown>>;
+      expect(models).toHaveLength(MODELS.length);
 
-    for (let i = 0; i < MODELS.length; i++) {
-      expect(models[i].id).toBe(MODELS[i].id);
-      expect(models[i].name).toBe(MODELS[i].name);
-      expect(models[i].reasoning).toBe(MODELS[i].reasoning);
-      expect(models[i].cost).toEqual(MODELS[i].cost);
-      expect(models[i].contextWindow).toBe(MODELS[i].contextWindow);
-      expect(models[i].maxTokens).toBe(MODELS[i].maxTokens);
-      expect(models[i].thinkingLevelMap).toEqual(MODELS[i].thinkingLevelMap);
-      expect(models[i].compat).toEqual(MODELS[i].compat);
-      expect(models[i].input).toEqual([...MODELS[i].input]);
-      expect(Array.isArray(models[i].input)).toBe(true);
-    }
-  });
+      for (let i = 0; i < MODELS.length; i++) {
+        expect(models[i].id).toBe(MODELS[i].id);
+        expect(models[i].name).toBe(MODELS[i].name);
+        expect(models[i].reasoning).toBe(MODELS[i].reasoning);
+        expect(models[i].cost).toEqual(MODELS[i].cost);
+        expect(models[i].contextWindow).toBe(MODELS[i].contextWindow);
+        expect(models[i].maxTokens).toBe(MODELS[i].maxTokens);
+        expect(models[i].thinkingLevelMap).toEqual(MODELS[i].thinkingLevelMap);
+        expect(models[i].compat).toEqual(MODELS[i].compat);
+        expect(models[i].input).toEqual([...MODELS[i].input]);
+        expect(Array.isArray(models[i].input)).toBe(true);
+      }
+      expect(models.find((model) => model.id === "cline-pass/glm-5.3")).toMatchObject({
+        input: ["text"],
+        contextWindow: 1_048_576,
+        maxTokens: 131_072,
+        reasoning: true,
+        cost: { input: 1.4, output: 4.4, cacheRead: 0.26, cacheWrite: 0 },
+        thinkingLevelMap: {
+          off: null,
+          minimal: null,
+          low: "low",
+          medium: null,
+          high: "high",
+          xhigh: "max",
+        },
+        compat: { supportsDeveloperRole: false },
+      });
+      expect(models.some((model) => model.id === "cline-pass/unreviewed-model")).toBe(false);
+    },
+  );
 
   it("wires oauth with login, refreshToken, and getApiKey", async () => {
     let captured: { config: Record<string, unknown> } | undefined;

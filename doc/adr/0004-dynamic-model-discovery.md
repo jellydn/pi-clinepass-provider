@@ -4,7 +4,7 @@ Date: 2026-06-30
 
 ## Status
 
-Accepted
+Superseded by [ADR 0009: Explicit static catalog with release-time lineup verification](0009-explicit-static-catalog.md).
 
 ## Context
 

@@ -20,8 +20,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { resolveApiBase, PROVIDER_NAME, ENV_API_KEY } from "./env.js";
-import { resolveApiKey } from "./auth.js";
-import { resolveModels } from "./models.js";
+import { MODELS } from "./models.js";
 import { handleClinePassError } from "./error-handler.js";
 import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
@@ -35,12 +34,6 @@ import { getApiKey as oauthGetApiKey, login, refreshToken } from "./oauth.js";
 
 export default async function (pi: ExtensionAPI) {
   const apiBase = resolveApiBase();
-
-  // Attempt dynamic model discovery from the Cline API. Falls back to the
-  // static MODELS array on any error (network failure, 404, parse error).
-  // The fetch has a 5-second timeout so startup is never blocked for long.
-  const apiKey = resolveApiKey();
-  const models = await resolveModels(apiKey, { apiBase });
 
   // Only register the $CLINE_API_KEY sigil when the env var is set at extension
   // load time. OAuth-only installs should not advertise an unconfigured env-key
@@ -66,7 +59,9 @@ export default async function (pi: ExtensionAPI) {
     // Spread the model object so all fields (including future ones like
     // `compat` / `thinkingFormat`) propagate to pi automatically. Only
     // `input` needs transformation: readonly modality array → mutable array.
-    models: models.map((model) => ({
+    // Registration is explicit: remote catalog entries cannot grant pass
+    // access or replace reviewed limits, prices, and thinking maps.
+    models: MODELS.map((model) => ({
       ...model,
       input: [...model.input],
     })),

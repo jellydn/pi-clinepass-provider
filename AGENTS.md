@@ -41,16 +41,16 @@ This file is the handoff trail between agents and humans. If you resolve an item
 - **`src/index.ts`** — Entry. Calls `pi.registerProvider()`, wires models + OAuth + error handler.
 - **`src/env.ts`** — Constants (`DEFAULT_API_BASE`, `ENV_API_KEY`, `PROVIDER_NAME`), `resolveApiBase()`, `sanitizeApiKey()`, `buildEndpointUrl()`.
 - **`src/auth.ts`** — API key resolution chain: env var → `~/.cline/data/settings/providers.json` → `~/.pi/agent/auth.json`. Shared `walkAuthPaths()` / `walkClineProviderSettings()` utilities used by both auth and workos modules.
-- **`src/models.ts`** — Static model definitions (12 curated models with pricing + thinking level maps) and dynamic model discovery (`fetchRemoteModels`, `resolveModels`). 5-second fetch timeout.
+- **`src/models.ts`** — Explicit static model definitions with pricing, token limits, modalities, and thinking level maps. No runtime catalog discovery.
 - **`src/workos.ts`** — WorkOS OAuth protocol adapter: credential extraction from providers.json and `~/.pi/agent/auth.json`, token refresh via Cline's `/api/v1/auth/refresh`, `isWorkosToken()` check.
 - **`src/oauth.ts`** — `/login` flow: auto-detects existing WorkOS credentials, falls back to browser-assisted manual API key paste. `refreshToken()` delegates to WorkOS refresh or returns static key unchanged.
 - **`src/error-handler.ts`** + **`src/errors.ts`** — `message_end` handler that classifies ClinePass 401/403/429 errors into user-friendly notifications.
-- **`src/utils.ts`** — Type guards (`isRecord`, `stringValue`, `numberValue`, `booleanValue`).
+- **`src/utils.ts`** — Type guards (`isRecord`, `stringValue`).
 - **`tests/type/contract.ts`** — Type-level contract: verifies the default export conforms to `ExtensionAPI` at compile time. Checked by `tsc` since `tsconfig.json` `include` covers all of `src/**/*.ts` + `tests/**/*.ts` (broader than vitest, which only runs `tests/**/*.test.ts`).
 
 ## Testing
 
-- **Unit tests** (`tests/unit/`) — Use dependency injection (`AuthKeyOptions`, `RemoteModelsOptions`, `WorkosRefreshOptions`). No FS or network. `vitest.config.ts` includes `tests/**/*.test.ts`. Run with `npm test`.
+- **Unit tests** (`tests/unit/`) — Use dependency injection (`AuthKeyOptions`, `WorkosRefreshOptions`). No FS or network. `vitest.config.ts` includes `tests/**/*.test.ts`. Run with `npm test`.
 - **Type contract** (`tests/type/contract.ts`) — Verified by `npm run typecheck`. If pi changes `ExtensionAPI`, this fails at compile time.
 - **E2E** (`tests/e2e/smoke.sh`) — Runs `pi --no-extensions -e <path>` with real `CLINE_API_KEY`. Requires `pi` CLI globally. CI runs only on `workflow_dispatch` with `run_e2e=true`.
 - **Covered modules** — 1:1 test-to-module mapping (`env.test.ts`, `auth.test.ts`, `models.test.ts`, etc.).
@@ -65,6 +65,6 @@ This file is the handoff trail between agents and humans. If you resolve an item
 - **WorkOS refresh nuances** — Cline's `/api/v1/auth/refresh` accepts `{granttype, refreshToken}` (no underscore in `granttype`). Response: `{data: {accessToken, refreshToken}}`. Access tokens need `workos:` prefix. Each refresh rotates the `refreshToken` — old one is single-use.
 - **API key resolution priority** — explicit key arg → `CLINE_API_KEY` env var → `~/.cline/data/settings/providers.json` (static `apiKey` field) → `~/.pi/agent/auth.json`.
 - **`CLINE_API_BASE`** env var overrides the API endpoint (default: `https://api.cline.bot`).
-- **Model discovery** — at startup, fetches `/api/v1/models` (5s timeout). Falls back to static `MODELS` array on any error (network, 404, parse, empty list). Remote models without `cline-pass/` prefix are filtered out.
+- **Catalog verification** — `npm run check:catalog` (requires Bun) compares all static IDs with the first-party `/api/v1/ai/cline/recommended-models` `clinePass` bucket at release time. Any mismatch or failed request returns nonzero. The feed provides no limits, prices, modalities, or account-entitlement evidence; no vendor-ID inference. Runtime always registers `MODELS`.
 - **Lint** — `.oxlintrc.json` disables `unicorn/consistent-function-scoping` in test files. Uses `typescript`, `unicorn`, `oxc`, `import`, `jest` plugins.
 - **`CONTEXT.md`** — Domain glossary (ClinePass, WorkOS OAuth, provider concepts). Source of truth for ubiquitous language.
