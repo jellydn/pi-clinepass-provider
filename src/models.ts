@@ -171,6 +171,29 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
+    id: "cline-pass/kimi-k3.1-pro",
+    name: "Kimi K3.1 Pro (ClinePass)",
+    reasoning: true,
+    input: ["text", "image"],
+    // ClinePass pricing table (peak): $2.00 in / $10.00 out / $0.20 cached
+    // read / $2.00 (5min) or $4.00 (1h) cache write.
+    cost: { input: 2.0, output: 10.0, cacheRead: 0.2, cacheWrite: 2.0 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+    // Verified live (2026-11-02): the ClinePass gateway accepts
+    // reasoning_effort none/low/medium/high/max and image input, so every
+    // pi level except "minimal" maps directly; pi's "xhigh" maps to the
+    // extra "max" tier.
+    thinkingLevelMap: {
+      off: "none",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "max",
+    },
+  },
+  {
     id: "cline-pass/muse-spark-1.3-contributor",
     name: "Muse Spark 1.3 Contributor (ClinePass)",
     reasoning: true,
@@ -236,10 +259,30 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
-    id: "cline-pass/mimo-v2.5",
-    name: "MiMo-V2.5 (ClinePass)",
+    id: "cline-pass/deepseek-v4.1-flash-1017",
+    name: "DeepSeek V4.1 Flash 1017 (ClinePass)",
     reasoning: true,
     input: ["text", "image"],
+    // Pinned snapshot of DeepSeek V4.1 Flash (build 1017). Peak rates per
+    // ClinePass pricing table; off-peak (16:30-00:30 UTC) is half.
+    cost: { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: 0 },
+    contextWindow: 1_000_000,
+    maxTokens: 384_000,
+    thinkingLevelMap: {
+      off: "none",
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "high",
+      xhigh: "high",
+    },
+  },
+  {
+    id: "cline-pass/mimo-v2.6-flash",
+    name: "MiMo V2.6 Flash (ClinePass)",
+    reasoning: true,
+    input: ["text", "image"],
+    // ClinePass pricing table: $0.14 in / $0.28 out / $0.0028 cached read.
     cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
@@ -253,11 +296,12 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     },
   },
   {
-    id: "cline-pass/mimo-v2.5-pro",
-    name: "MiMo-V2.5-Pro (ClinePass)",
+    id: "cline-pass/mimo-v2.6-pro",
+    name: "MiMo V2.6 Pro (ClinePass)",
     reasoning: true,
-    input: ["text"],
-    cost: { input: 1.74, output: 3.48, cacheRead: 0.0145, cacheWrite: 0 },
+    input: ["text", "image"],
+    // ClinePass pricing table: $0.435 in / $0.87 out / $0.0036 cached read.
+    cost: { input: 0.435, output: 0.87, cacheRead: 0.0036, cacheWrite: 0 },
     contextWindow: 262_144,
     maxTokens: 131_072,
     thinkingLevelMap: {
@@ -275,6 +319,24 @@ const MODELS_BASE: readonly ModelConfigBase[] = [
     reasoning: true,
     input: ["text", "image"],
     cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0 },
+    contextWindow: 1_048_576,
+    maxTokens: 131_072,
+    thinkingLevelMap: {
+      off: "none",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: null,
+    },
+  },
+  {
+    id: "cline-pass/minimax-m3.1-flash",
+    name: "MiniMax M3.1 Flash (ClinePass)",
+    reasoning: true,
+    input: ["text", "image"],
+    // ClinePass pricing table: $0.15 in / $0.60 out / $0.015 cached read.
+    cost: { input: 0.15, output: 0.6, cacheRead: 0.015, cacheWrite: 0 },
     contextWindow: 1_048_576,
     maxTokens: 131_072,
     thinkingLevelMap: {
@@ -374,6 +436,8 @@ const RETIRED_MODEL_IDS = new Set([
   "cline-pass/kimi-k2.7-code",
   "cline-pass/kimi-k2.6",
   "cline-pass/deepseek-v4-flash",
+  "cline-pass/mimo-v2.5",
+  "cline-pass/mimo-v2.5-pro",
 ]);
 
 /**

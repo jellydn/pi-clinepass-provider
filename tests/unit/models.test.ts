@@ -18,13 +18,21 @@ describe("modelIds", () => {
     expect(ids).toContain("cline-pass/glm-5.3");
     expect(ids).toContain("cline-pass/glm-5.3-flash");
     expect(ids).toContain("cline-pass/kimi-k3");
+    expect(ids).toContain("cline-pass/kimi-k3.1-pro");
     expect(ids).toContain("cline-pass/muse-spark-1.3-contributor");
     expect(ids).toContain("cline-pass/deepseek-v4.1-flash");
+    expect(ids).toContain("cline-pass/deepseek-v4.1-flash-1017");
+    expect(ids).toContain("cline-pass/mimo-v2.6-flash");
+    expect(ids).toContain("cline-pass/mimo-v2.6-pro");
+    expect(ids).toContain("cline-pass/minimax-m3.1-flash");
     // Models deprecated by Cline effective 2026-09-21 (issue #79).
     expect(ids).not.toContain("cline-pass/glm-5.2");
     expect(ids).not.toContain("cline-pass/kimi-k2.7-code");
     expect(ids).not.toContain("cline-pass/kimi-k2.6");
     expect(ids).not.toContain("cline-pass/deepseek-v4-flash");
+    // MiMo V2.5 pair removed from ClinePass in the 2026-11 lineup refresh.
+    expect(ids).not.toContain("cline-pass/mimo-v2.5");
+    expect(ids).not.toContain("cline-pass/mimo-v2.5-pro");
   });
 
   it("all IDs start with cline-pass/", () => {
@@ -60,29 +68,33 @@ describe("MODELS", () => {
     }
   });
 
-  it("enables image input for the eight multimodal models", () => {
-    // Per OpenRouter architecture.input_modalities. MiMo-V2.5-Pro is
-    // text-only; models.dev PR #1993 was closed with that correction.
+  it("enables image input for the twelve multimodal models", () => {
+    // Per OpenRouter architecture.input_modalities and live gateway probes
+    // (2026-11-02): all five new models accept image_url content. The
+    // remaining models are text-only.
     const imageModels = [
       "cline-pass/kimi-k3",
+      "cline-pass/kimi-k3.1-pro",
       "cline-pass/glm-5.3-flash",
-      "cline-pass/mimo-v2.5",
+      "cline-pass/mimo-v2.6-flash",
+      "cline-pass/mimo-v2.6-pro",
       "cline-pass/minimax-m3",
+      "cline-pass/minimax-m3.1-flash",
       "cline-pass/muse-spark-1.3-contributor",
       "cline-pass/qwen3.8-max",
       "cline-pass/qwen3.7-plus",
       "cline-pass/deepseek-v4.1-flash",
+      "cline-pass/deepseek-v4.1-flash-1017",
     ];
     for (const id of imageModels) {
       expect(MODELS.find((m) => m.id === id)!.input).toEqual(["text", "image"]);
     }
   });
 
-  it("keeps text-only input for the four non-multimodal models", () => {
+  it("keeps text-only input for the three non-multimodal models", () => {
     const textModels = [
       "cline-pass/glm-5.3",
       "cline-pass/deepseek-v4-pro",
-      "cline-pass/mimo-v2.5-pro",
       "cline-pass/qwen3.7-max",
     ];
     for (const id of textModels) {
@@ -118,9 +130,10 @@ describe("MODELS", () => {
     // maps to "none" for ClinePass). Models whose upstream provider has no
     // extra-high tier (e.g. z.ai "max") must map both minimal and xhigh to null.
     const withoutXhigh = [
-      "cline-pass/mimo-v2.5",
-      "cline-pass/mimo-v2.5-pro",
+      "cline-pass/mimo-v2.6-flash",
+      "cline-pass/mimo-v2.6-pro",
       "cline-pass/minimax-m3",
+      "cline-pass/minimax-m3.1-flash",
       "cline-pass/qwen3.7-max",
       "cline-pass/qwen3.7-plus",
     ];
@@ -206,8 +219,37 @@ describe("MODELS", () => {
     });
   });
 
+  it("Kimi K3.1 Pro supports every effort tier except minimal", () => {
+    // Verified live against the ClinePass gateway (2026-11-02):
+    // reasoning_effort none/low/medium/high/max all return 200 with
+    // content, so pi's off/low/medium/high map directly and xhigh maps to
+    // the extra "max" tier. Pricing per the ClinePass docs table (peak).
+    const model = MODELS.find((m) => m.id === "cline-pass/kimi-k3.1-pro")!;
+    expect(model.thinkingLevelMap).toEqual({
+      off: "none",
+      minimal: null,
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "max",
+    });
+    expect(model.cost).toEqual({
+      input: 2,
+      output: 10,
+      cacheRead: 0.2,
+      cacheWrite: 2,
+    });
+    expect(model.contextWindow).toBe(1_048_576);
+    expect(model.maxTokens).toBe(131_072);
+    expect(model.input).toEqual(["text", "image"]);
+  });
+
   it("DeepSeek V4 models only support high (and xhigh clamped to high)", () => {
-    for (const id of ["cline-pass/deepseek-v4-pro", "cline-pass/deepseek-v4.1-flash"]) {
+    for (const id of [
+      "cline-pass/deepseek-v4-pro",
+      "cline-pass/deepseek-v4.1-flash",
+      "cline-pass/deepseek-v4.1-flash-1017",
+    ]) {
       const model = MODELS.find((m) => m.id === id)!;
       const map = model.thinkingLevelMap;
       expect(map.off).toBe("none");
@@ -393,6 +435,8 @@ describe("fetchRemoteModels", () => {
       "cline-pass/kimi-k2.7-code",
       "cline-pass/kimi-k2.6",
       "cline-pass/deepseek-v4-flash",
+      "cline-pass/mimo-v2.5",
+      "cline-pass/mimo-v2.5-pro",
       "cline-pass/deepseek-v4.1-flash",
       "cline-pass/future-model",
     ];
